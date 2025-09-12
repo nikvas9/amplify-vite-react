@@ -10,6 +10,11 @@ const schema = a.schema({
   Todo: a
     .model({
       content: a.string(),
+      userName: a.string(),
+      driverName: a.string(),
+      phoneNumber: a.string(),
+      truckSize: a.string(),
+      status: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
