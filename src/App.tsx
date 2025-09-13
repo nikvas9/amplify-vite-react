@@ -29,25 +29,41 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let filtered = todos.filter(todo => 
-      todo.content?.toLowerCase().includes(filter.toLowerCase()) ||
-      todo.userName?.toLowerCase().includes(filter.toLowerCase()) ||
-      todo.driverName?.toLowerCase().includes(filter.toLowerCase()) ||
-      todo.phoneNumber?.includes(filter) ||
-      todo.truckSize?.toLowerCase().includes(filter.toLowerCase())
-    );
+    let filtered = todos.filter(todo => {
+      if (!filter) return true;
+      const searchTerm = filter.toLowerCase();
+      return (
+        (todo.content || "").toLowerCase().includes(searchTerm) ||
+        (todo.userName || "").toLowerCase().includes(searchTerm) ||
+        (todo.driverName || "").toLowerCase().includes(searchTerm) ||
+        (todo.phoneNumber || "").includes(filter) ||
+        (todo.truckSize || "").toLowerCase().includes(searchTerm) ||
+        (todo.status || "").toLowerCase().includes(searchTerm)
+      );
+    });
 
     if (sortField) {
       filtered.sort((a, b) => {
-        const aVal = a[sortField as keyof typeof a] || "";
-        const bVal = b[sortField as keyof typeof b] || "";
-        const comparison = aVal.toString().localeCompare(bVal.toString());
-        return sortDirection === "asc" ? comparison : -comparison;
+        if (sortField === "status") {
+          const aStatus = a.status || "";
+          const bStatus = b.status || "";
+          const aIndex = statusOrder.indexOf(aStatus);
+          const bIndex = statusOrder.indexOf(bStatus);
+          const comparison = aIndex - bIndex;
+          return sortDirection === "asc" ? comparison : -comparison;
+        } else {
+          const aVal = a[sortField as keyof typeof a] || "";
+          const bVal = b[sortField as keyof typeof b] || "";
+          const comparison = aVal.toString().localeCompare(bVal.toString());
+          return sortDirection === "asc" ? comparison : -comparison;
+        }
       });
     }
 
     setFilteredTodos(filtered);
   }, [todos, filter, sortField, sortDirection]);
+
+  const statusOrder = ["Pending Payment", "Blocked", "Vehicle Repair", "In Progress", "Completed"];
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -74,7 +90,7 @@ function App() {
     const truckSize = window.prompt("Truck Size");
     if (truckSize === null) return;
 
-    const status = window.prompt("Status (In Progress, Blocked, Waiting, Completed, Pending Payment):") || "In Progress";
+    const status = window.prompt("Status (In Progress, Blocked, Waiting, Vehicle Repair, Completed, Pending Payment):") || "In Progress";
 
     client.models.Todo.create({
       content,
@@ -112,7 +128,7 @@ function App() {
     const truckSize = window.prompt("Edit truck size", todo.truckSize ?? "");
     if (truckSize === null) return;
 
-    const status = window.prompt("Edit status (In Progress, Blocked, Waiting, Completed, Pending Payment):", todo.status ?? "In Progress");
+    const status = window.prompt("Edit status (In Progress, Blocked, Waiting, Vehicle Repair, Completed, Pending Payment):", todo.status ?? "In Progress");
     if (status === null) return;
 
     client.models.Todo.update({
@@ -299,6 +315,7 @@ function App() {
                       color: todo.status === "Completed" ? "#28a745" : 
                              todo.status === "Blocked" ? "#dc3545" :
                              todo.status === "Waiting" ? "#ffc107" :
+                             todo.status === "Vehicle Repair" ? "#6f42c1" :
                              todo.status === "Pending Payment" ? "#fd7e14" : "#007bff",
                       fontWeight: "bold"
                     }}
@@ -306,6 +323,7 @@ function App() {
                     <option value="In Progress" style={{ color: "#007bff" }}>In Progress</option>
                     <option value="Blocked" style={{ color: "#dc3545" }}>Blocked</option>
                     <option value="Waiting" style={{ color: "#ffc107" }}>Waiting</option>
+                    <option value="Vehicle Repair" style={{ color: "#6f42c1" }}>Vehicle Repair</option>
                     <option value="Completed" style={{ color: "#28a745" }}>Completed</option>
                     <option value="Pending Payment" style={{ color: "#fd7e14" }}>Pending Payment</option>
                   </select>
