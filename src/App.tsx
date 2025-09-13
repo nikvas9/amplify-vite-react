@@ -15,6 +15,10 @@ function formatDateCell(dateString?: string) {
 
 function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [filteredTodos, setFilteredTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [filter, setFilter] = useState("");
+  const [sortField, setSortField] = useState<string>("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -23,6 +27,36 @@ function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    let filtered = todos.filter(todo => 
+      todo.content?.toLowerCase().includes(filter.toLowerCase()) ||
+      todo.userName?.toLowerCase().includes(filter.toLowerCase()) ||
+      todo.driverName?.toLowerCase().includes(filter.toLowerCase()) ||
+      todo.phoneNumber?.includes(filter) ||
+      todo.truckSize?.toLowerCase().includes(filter.toLowerCase())
+    );
+
+    if (sortField) {
+      filtered.sort((a, b) => {
+        const aVal = a[sortField as keyof typeof a] || "";
+        const bVal = b[sortField as keyof typeof b] || "";
+        const comparison = aVal.toString().localeCompare(bVal.toString());
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+    }
+
+    setFilteredTodos(filtered);
+  }, [todos, filter, sortField, sortDirection]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
 
   function createTodo() {
     const content = window.prompt("Todo content");
@@ -40,12 +74,15 @@ function App() {
     const truckSize = window.prompt("Truck Size");
     if (truckSize === null) return;
 
+    const status = window.prompt("Status (In Progress, Blocked, Waiting, Completed, Pending Payment):") || "In Progress";
+
     client.models.Todo.create({
       content,
       userName,
       driverName,
       phoneNumber,
       truckSize,
+      status,
     })
     .then((result) => {
       console.log("Todo created successfully:", result);
@@ -75,6 +112,9 @@ function App() {
     const truckSize = window.prompt("Edit truck size", todo.truckSize ?? "");
     if (truckSize === null) return;
 
+    const status = window.prompt("Edit status (In Progress, Blocked, Waiting, Completed, Pending Payment):", todo.status ?? "In Progress");
+    if (status === null) return;
+
     client.models.Todo.update({
       id,
       content,
@@ -82,6 +122,7 @@ function App() {
       driverName,
       phoneNumber,
       truckSize,
+      status,
     })
     .then(() => {
       console.log("Todo updated!");
@@ -97,15 +138,24 @@ function App() {
   }
 
   return (
-    <main>
+    <main style={{ position: "relative", minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1>
           My{user?.username ? ` (${user.username})` : ""} todos
         </h1>
-        <button onClick={createTodo} style={{ marginLeft: "auto" }}>+ new</button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="Filter todos..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+          />
+          <button onClick={createTodo}>+ new</button>
+        </div>
       </div>
       {/* --- Table Styling Block: Grey Background & Status Column --- */}
-      <div style={{ overflowX: "auto", maxWidth: "100vw", overflowY: "auto", maxHeight: "70vh" }}>
+      <div style={{ overflowX: "auto", maxWidth: "100vw", overflowY: "auto", maxHeight: "70vh", marginTop: "0" }}>
         <table
           style={{
             minWidth: "900px",
@@ -123,64 +173,103 @@ function App() {
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>ID</th>
+              }}>
+                <button onClick={() => handleSort("id")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  ID {sortField === "id" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Content</th>
+              }}>
+                <button onClick={() => handleSort("content")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Content {sortField === "content" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>User Name</th>
+              }}>
+                <button onClick={() => handleSort("userName")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  User Name {sortField === "userName" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Driver Name</th>
+              }}>
+                <button onClick={() => handleSort("driverName")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Driver Name {sortField === "driverName" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Phone Number</th>
+              }}>
+                <button onClick={() => handleSort("phoneNumber")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Phone Number {sortField === "phoneNumber" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Truck Size</th>
+              }}>
+                <button onClick={() => handleSort("truckSize")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Truck Size {sortField === "truckSize" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Status</th>
+              }}>
+                <button onClick={() => handleSort("status")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Status {sortField === "status" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Created At</th>
+              }}>
+                <button onClick={() => handleSort("createdAt")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Created At {sortField === "createdAt" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
                 textAlign: "left",
                 padding: "8px"
-              }}>Updated At</th>
+              }}>
+                <button onClick={() => handleSort("updatedAt")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Updated At {sortField === "updatedAt" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
               <th style={{
                 borderBottom: "2px solid #90ee90",
+                borderRight: "1px solid #90ee90",
                 textAlign: "left",
-                padding: "8px"
+                padding: "8px",
+                color: "#333",
+                fontWeight: "bold"
               }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {todos.map((todo, idx) => (
+            {filteredTodos.map((todo, idx) => (
               <tr
                 key={todo.id}
                 style={{
@@ -195,7 +284,31 @@ function App() {
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.phoneNumber}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.truckSize}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
-                  {todo.status ?? ""}
+                  <select 
+                    value={todo.status || "In Progress"} 
+                    onChange={(e) => {
+                      client.models.Todo.update({
+                        id: todo.id,
+                        status: e.target.value
+                      });
+                    }}
+                    style={{ 
+                      border: "none", 
+                      background: "transparent", 
+                      width: "100%",
+                      color: todo.status === "Completed" ? "#28a745" : 
+                             todo.status === "Blocked" ? "#dc3545" :
+                             todo.status === "Waiting" ? "#ffc107" :
+                             todo.status === "Pending Payment" ? "#fd7e14" : "#007bff",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    <option value="In Progress" style={{ color: "#007bff" }}>In Progress</option>
+                    <option value="Blocked" style={{ color: "#dc3545" }}>Blocked</option>
+                    <option value="Waiting" style={{ color: "#ffc107" }}>Waiting</option>
+                    <option value="Completed" style={{ color: "#28a745" }}>Completed</option>
+                    <option value="Pending Payment" style={{ color: "#fd7e14" }}>Pending Payment</option>
+                  </select>
                 </td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
                   {todo.createdAt && (
@@ -211,7 +324,7 @@ function App() {
                     </span>
                   )}
                 </td>
-                <td style={{ padding: "8px" }}>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
                   <button
                     onClick={() => updateTodo(todo.id)}
                     title="Edit"
@@ -236,7 +349,22 @@ function App() {
           Review next step of this tutorial.
         </a>
       </div>
-      <button onClick={signOut}>Sign out</button>
+      <button 
+        onClick={signOut}
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          padding: "10px 20px",
+          backgroundColor: "#ff4444",
+          color: "white",
+          border: "none",
+          borderRadius: "5px",
+          cursor: "pointer"
+        }}
+      >
+        Sign out
+      </button>
     </main>
   );
 }
