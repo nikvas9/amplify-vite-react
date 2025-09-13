@@ -6,7 +6,7 @@ import { generateClient } from "aws-amplify/data";
 const client = generateClient<Schema>();
 
 function formatDateCell(dateString?: string) {
-  if (!dateString) return "";
+  if (!dateString) return { display: "", tooltip: "" };
   const date = new Date(dateString);
   const display = `${date.getFullYear()}-${date.toLocaleString("en-US", { month: "short" })}-${String(date.getDate()).padStart(2, "0")}`;
   const tooltip = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
