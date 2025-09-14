@@ -19,6 +19,15 @@ function App() {
   const [filter, setFilter] = useState("");
   const [sortField, setSortField] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    content: "",
+    userName: "",
+    driverName: "",
+    phoneNumber: "",
+    truckSize: "",
+    status: "In Progress"
+  });
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -74,37 +83,59 @@ function App() {
     }
   };
 
+  function generateCustomId() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const datePrefix = `${year}-${month}${day}`;
+    
+    // Find existing todos with today's date
+    const todayTodos = todos.filter(todo => todo.customId?.startsWith(datePrefix));
+    const sequence = todayTodos.length + 1;
+    
+    return `${datePrefix}-${String(sequence).padStart(4, '0')}`;
+  }
+
   function createTodo() {
-    const content = window.prompt("Todo content");
-    if (content === null) return;
+    setShowModal(true);
+  }
 
-    const userName = window.prompt("User Name");
-    if (userName === null) return;
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    console.log("Form data:", formData);
+    
+    const customId = generateCustomId();
+    console.log("Generated customId:", customId);
 
-    const driverName = window.prompt("Driver Name");
-    if (driverName === null) return;
+    const todoData = {
+      content: formData.content,
+      userName: formData.userName,
+      driverName: formData.driverName,
+      phoneNumber: formData.phoneNumber,
+      truckSize: formData.truckSize,
+      status: formData.status,
+      customId: customId,
+    };
+    
+    console.log("Creating todo with data:", todoData);
 
-    const phoneNumber = window.prompt("Phone Number");
-    if (phoneNumber === null) return;
-
-    const truckSize = window.prompt("Truck Size");
-    if (truckSize === null) return;
-
-    const status = window.prompt("Status (In Progress, Blocked, Waiting, Vehicle Repair, Completed, Pending Payment):") || "In Progress";
-
-    client.models.Todo.create({
-      content,
-      userName,
-      driverName,
-      phoneNumber,
-      truckSize,
-      status,
-    })
+    client.models.Todo.create(todoData)
     .then((result) => {
       console.log("Todo created successfully:", result);
+      setShowModal(false);
+      setFormData({
+        content: "",
+        userName: "",
+        driverName: "",
+        phoneNumber: "",
+        truckSize: "",
+        status: "In Progress"
+      });
     })
     .catch((err) => {
       console.error("Create failed:", err);
+      console.error("Error details:", JSON.stringify(err, null, 2));
       alert("Create failed: " + (err.message || err));
     });
   }
@@ -190,8 +221,8 @@ function App() {
                 textAlign: "left",
                 padding: "8px"
               }}>
-                <button onClick={() => handleSort("id")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  ID {sortField === "id" && (sortDirection === "asc" ? "↑" : "↓")}
+                <button onClick={() => handleSort("customId")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Custom ID {sortField === "customId" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -254,16 +285,7 @@ function App() {
                   Status {sortField === "status" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
-              <th style={{
-                borderBottom: "2px solid #90ee90",
-                borderRight: "1px solid #90ee90",
-                textAlign: "left",
-                padding: "8px"
-              }}>
-                <button onClick={() => handleSort("createdAt")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Created At {sortField === "createdAt" && (sortDirection === "asc" ? "↑" : "↓")}
-                </button>
-              </th>
+
               <th style={{
                 borderBottom: "2px solid #90ee90",
                 borderRight: "1px solid #90ee90",
@@ -293,7 +315,7 @@ function App() {
                   borderBottom: "1px solid #90ee90"
                 }}
               >
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.id}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.customId || todo.id}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.content}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.userName}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.driverName}</td>
@@ -328,13 +350,7 @@ function App() {
                     <option value="Pending Payment" style={{ color: "#fd7e14" }}>Pending Payment</option>
                   </select>
                 </td>
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
-                  {todo.createdAt && (
-                    <span title={`Time: ${formatDateCell(todo.createdAt).tooltip}`}>
-                      {formatDateCell(todo.createdAt).display}
-                    </span>
-                  )}
-                </td>
+
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
                   {todo.updatedAt && (
                     <span title={`Time: ${formatDateCell(todo.updatedAt).tooltip}`}>
@@ -360,6 +376,114 @@ function App() {
         </table>
       </div>
       {/* --- End Table Styling Block --- */}
+      
+      {/* Modal */}
+      {showModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            maxWidth: "90vw"
+          }}>
+            <h3>Add New Todo</h3>
+            <form onSubmit={handleSubmit}>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Content:</label>
+                <input
+                  type="text"
+                  value={formData.content}
+                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>User Name:</label>
+                <input
+                  type="text"
+                  value={formData.userName}
+                  onChange={(e) => setFormData({...formData, userName: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Driver Name:</label>
+                <input
+                  type="text"
+                  value={formData.driverName}
+                  onChange={(e) => setFormData({...formData, driverName: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Phone Number:</label>
+                <input
+                  type="text"
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Truck Size:</label>
+                <input
+                  type="text"
+                  value={formData.truckSize}
+                  onChange={(e) => setFormData({...formData, truckSize: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label>Status:</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                >
+                  <option value="In Progress">In Progress</option>
+                  <option value="Blocked">Blocked</option>
+                  <option value="Waiting">Waiting</option>
+                  <option value="Vehicle Repair">Vehicle Repair</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Pending Payment">Pending Payment</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       <div>
         🥳 App successfully hosted. Try creating a new todo.
         <br />

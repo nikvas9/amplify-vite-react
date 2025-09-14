@@ -15,6 +15,7 @@ const schema = a.schema({
       phoneNumber: a.string(),
       truckSize: a.string(),
       status: a.string(),
+      customId: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
