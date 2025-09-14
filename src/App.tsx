@@ -184,6 +184,35 @@ function App() {
     client.models.Todo.delete({ id });
   }
 
+  function exportToCSV() {
+    const headers = ['Custom ID', 'Content', 'User Name', 'Driver Name', 'Phone Number', 'Truck Size', 'Status', 'Updated At'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredTodos.map(todo => [
+        `"${todo.customId || todo.id || ''}"`,
+        `"${(todo.content || '').replace(/"/g, '""')}"`,
+        `"${(todo.userName || '').replace(/"/g, '""')}"`,
+        `"${(todo.driverName || '').replace(/"/g, '""')}"`,
+        `"${(todo.phoneNumber || '').replace(/"/g, '""')}"`,
+        `"${(todo.truckSize || '').replace(/"/g, '""')}"`,
+        `"${(todo.status || '').replace(/"/g, '""')}"`,
+        `"${todo.updatedAt ? new Date(todo.updatedAt).toLocaleString() : ''}"`
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    a.download = `${timestamp}_trips.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main style={{ position: "relative", minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -199,6 +228,7 @@ function App() {
             style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
           />
           <button onClick={createTodo}>+ new</button>
+          <button onClick={exportToCSV} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>⬇️ Export</button>
         </div>
       </div>
       {/* --- Table Styling Block: Grey Background & Status Column --- */}
