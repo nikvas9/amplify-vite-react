@@ -38,6 +38,14 @@ function App() {
     truckSize: "",
     status: "In Progress"
   });
+  const [originalData, setOriginalData] = useState({
+    content: "",
+    userName: "",
+    driverName: "",
+    phoneNumber: "",
+    truckSize: "",
+    status: "In Progress"
+  });
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -154,14 +162,17 @@ function App() {
     const todo = todos.find((t) => t.id === id);
     if (!todo) return;
 
-    setEditFormData({
+    const todoData = {
       content: todo.content || "",
       userName: todo.userName || "",
       driverName: todo.driverName || "",
       phoneNumber: todo.phoneNumber || "",
       truckSize: todo.truckSize || "",
       status: todo.status || "In Progress"
-    });
+    };
+    
+    setEditFormData(todoData);
+    setOriginalData(todoData);
     setEditingTodo(id);
     setShowEditModal(true);
   }
@@ -191,7 +202,9 @@ function App() {
   }
 
   function deleteTodo(id: string) {
-    client.models.Todo.delete({ id });
+    if (window.confirm("Are you sure you want to delete this record?")) {
+      client.models.Todo.delete({ id });
+    }
   }
 
   function exportToCSV() {
@@ -547,6 +560,36 @@ function App() {
             maxWidth: "90vw"
           }}>
             <h3>Edit Todo</h3>
+            
+            {/* Changes Summary */}
+            {Object.keys(editFormData).some(key => editFormData[key as keyof typeof editFormData] !== originalData[key as keyof typeof originalData]) && (
+              <div style={{ marginBottom: "15px", padding: "10px", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #dee2e6" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#495057" }}>Changes:</h4>
+                {Object.keys(editFormData).map(key => {
+                  const typedKey = key as keyof typeof editFormData;
+                  const oldValue = originalData[typedKey];
+                  const newValue = editFormData[typedKey];
+                  if (oldValue !== newValue) {
+                    return (
+                      <div key={key} style={{ marginBottom: "5px" }}>
+                        <strong>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</strong>
+                        <div style={{ display: "flex", gap: "5px", alignItems: "center", marginTop: "2px" }}>
+                          <span style={{ backgroundColor: "#ffebee", padding: "2px 6px", borderRadius: "3px", textDecoration: "line-through", fontSize: "12px" }}>
+                            {oldValue}
+                          </span>
+                          <span>→</span>
+                          <span style={{ backgroundColor: "#e8f5e8", padding: "2px 6px", borderRadius: "3px", fontSize: "12px" }}>
+                            {newValue}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            )}
+            
             <form onSubmit={handleEditSubmit}>
               <div style={{ marginBottom: "10px" }}>
                 <label>Content:</label>
