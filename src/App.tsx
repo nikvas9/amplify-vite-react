@@ -21,6 +21,9 @@ function App() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingTodo, setDeletingTodo] = useState<string | null>(null);
   const [editingTodo, setEditingTodo] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     content: "",
@@ -201,9 +204,35 @@ function App() {
     });
   }
 
+  function hasChanges() {
+    return Object.keys(editFormData).some(key => 
+      editFormData[key as keyof typeof editFormData] !== originalData[key as keyof typeof originalData]
+    );
+  }
+
+  function handleEditCancel() {
+    if (hasChanges()) {
+      setShowConfirmModal(true);
+    } else {
+      setShowEditModal(false);
+    }
+  }
+
+  function confirmExit() {
+    setShowConfirmModal(false);
+    setShowEditModal(false);
+  }
+
   function deleteTodo(id: string) {
-    if (window.confirm("Are you sure you want to delete this record?")) {
-      client.models.Todo.delete({ id });
+    setDeletingTodo(id);
+    setShowDeleteModal(true);
+  }
+
+  function confirmDelete() {
+    if (deletingTodo) {
+      client.models.Todo.delete({ id: deletingTodo });
+      setShowDeleteModal(false);
+      setDeletingTodo(null);
     }
   }
 
@@ -540,18 +569,27 @@ function App() {
       
       {/* Edit Modal */}
       {showEditModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000
-        }}>
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              handleEditCancel();
+            }
+          }}
+          tabIndex={-1}
+        >
           <div style={{
             backgroundColor: "white",
             padding: "20px",
@@ -659,7 +697,7 @@ function App() {
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 <button
                   type="button"
-                  onClick={() => setShowEditModal(false)}
+                  onClick={handleEditCancel}
                   style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
                 >
                   Cancel
@@ -672,6 +710,119 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1001
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setShowConfirmModal(false);
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "300px",
+            textAlign: "center"
+          }}>
+            <p style={{ margin: "0 0 20px 0" }}>You have unsaved changes. Exit without saving?</p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+              >
+                No
+              </button>
+              <button
+                onClick={confirmExit}
+                style={{ padding: "8px 16px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px" }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deletingTodo && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1001
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setShowDeleteModal(false);
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            textAlign: "center"
+          }}>
+            <h3 style={{ margin: "0 0 15px 0", color: "#dc3545" }}>Delete Record</h3>
+            {(() => {
+              const todo = todos.find(t => t.id === deletingTodo);
+              return todo ? (
+                <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#fff3cd", border: "1px solid #ffeaa7", borderRadius: "4px", textAlign: "left" }}>
+                  <div><strong>ID:</strong> {todo.customId || todo.id}</div>
+                  <div><strong>Content:</strong> {todo.content}</div>
+                  <div><strong>User:</strong> {todo.userName}</div>
+                  <div><strong>Driver:</strong> {todo.driverName}</div>
+                  <div><strong>Phone:</strong> {todo.phoneNumber}</div>
+                  <div><strong>Truck Size:</strong> {todo.truckSize}</div>
+                  <div><strong>Status:</strong> {todo.status}</div>
+                </div>
+              ) : null;
+            })()}
+            <p style={{ margin: "0 0 20px 0" }}>Are you sure you want to delete this record?</p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+              >
+                No
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{ padding: "8px 16px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px" }}
+              >
+                Yes
+              </button>
+            </div>
           </div>
         </div>
       )}
