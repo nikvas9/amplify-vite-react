@@ -20,7 +20,17 @@ function App() {
   const [sortField, setSortField] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTodo, setEditingTodo] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    content: "",
+    userName: "",
+    driverName: "",
+    phoneNumber: "",
+    truckSize: "",
+    status: "In Progress"
+  });
+  const [editFormData, setEditFormData] = useState({
     content: "",
     userName: "",
     driverName: "",
@@ -144,35 +154,35 @@ function App() {
     const todo = todos.find((t) => t.id === id);
     if (!todo) return;
 
-    const content = window.prompt("Edit todo content", todo.content ?? "");
-    if (content === null) return;
+    setEditFormData({
+      content: todo.content || "",
+      userName: todo.userName || "",
+      driverName: todo.driverName || "",
+      phoneNumber: todo.phoneNumber || "",
+      truckSize: todo.truckSize || "",
+      status: todo.status || "In Progress"
+    });
+    setEditingTodo(id);
+    setShowEditModal(true);
+  }
 
-    const userName = window.prompt("Edit user name", todo.userName ?? "");
-    if (userName === null) return;
-
-    const driverName = window.prompt("Edit driver name", todo.driverName ?? "");
-    if (driverName === null) return;
-
-    const phoneNumber = window.prompt("Edit phone number", todo.phoneNumber ?? "");
-    if (phoneNumber === null) return;
-
-    const truckSize = window.prompt("Edit truck size", todo.truckSize ?? "");
-    if (truckSize === null) return;
-
-    const status = window.prompt("Edit status (In Progress, Blocked, Waiting, Vehicle Repair, Completed, Pending Payment):", todo.status ?? "In Progress");
-    if (status === null) return;
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingTodo) return;
 
     client.models.Todo.update({
-      id,
-      content,
-      userName,
-      driverName,
-      phoneNumber,
-      truckSize,
-      status,
+      id: editingTodo,
+      content: editFormData.content,
+      userName: editFormData.userName,
+      driverName: editFormData.driverName,
+      phoneNumber: editFormData.phoneNumber,
+      truckSize: editFormData.truckSize,
+      status: editFormData.status,
     })
     .then(() => {
       console.log("Todo updated!");
+      setShowEditModal(false);
+      setEditingTodo(null);
     })
     .catch((err) => {
       console.error("Update failed:", err);
@@ -508,6 +518,114 @@ function App() {
                   style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px" }}
                 >
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            maxWidth: "90vw"
+          }}>
+            <h3>Edit Todo</h3>
+            <form onSubmit={handleEditSubmit}>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Content:</label>
+                <input
+                  type="text"
+                  value={editFormData.content}
+                  onChange={(e) => setEditFormData({...editFormData, content: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>User Name:</label>
+                <input
+                  type="text"
+                  value={editFormData.userName}
+                  onChange={(e) => setEditFormData({...editFormData, userName: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Driver Name:</label>
+                <input
+                  type="text"
+                  value={editFormData.driverName}
+                  onChange={(e) => setEditFormData({...editFormData, driverName: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Phone Number:</label>
+                <input
+                  type="text"
+                  value={editFormData.phoneNumber}
+                  onChange={(e) => setEditFormData({...editFormData, phoneNumber: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Truck Size:</label>
+                <input
+                  type="text"
+                  value={editFormData.truckSize}
+                  onChange={(e) => setEditFormData({...editFormData, truckSize: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label>Status:</label>
+                <select
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({...editFormData, status: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                >
+                  <option value="In Progress">In Progress</option>
+                  <option value="Blocked">Blocked</option>
+                  <option value="Waiting">Waiting</option>
+                  <option value="Vehicle Repair">Vehicle Repair</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Pending Payment">Pending Payment</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  Update
                 </button>
               </div>
             </form>
