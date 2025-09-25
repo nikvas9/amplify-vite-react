@@ -18,6 +18,19 @@ const schema = a.schema({
       customId: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
+  
+  Driver: a
+    .model({
+      name: a.string(),
+      phoneNumber: a.string(),
+      vehicleNumber: a.string(),
+      vehicleSize: a.string(),
+      maxLoad: a.string(),
+      aadharNumber: a.string(),
+      licenseNumber: a.string(),
+      isActive: a.boolean(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

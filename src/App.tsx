@@ -16,13 +16,17 @@ function formatDateCell(dateString?: string) {
 function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [filteredTodos, setFilteredTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [drivers, setDrivers] = useState<Array<Schema["Driver"]["type"]>>([]);
+  const [showDrivers, setShowDrivers] = useState(false);
   const [filter, setFilter] = useState("");
   const [sortField, setSortField] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [showModal, setShowModal] = useState(false);
+  const [showDriverModal, setShowDriverModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLicense, setShowLicense] = useState<{[key: string]: boolean}>({});
   const [deletingTodo, setDeletingTodo] = useState<string | null>(null);
   const [editingTodo, setEditingTodo] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -49,11 +53,27 @@ function App() {
     truckSize: "",
     status: "In Progress"
   });
+  const [driverFormData, setDriverFormData] = useState({
+    name: "",
+    phoneNumber: "",
+    vehicleNumber: "",
+    vehicleSize: "",
+    maxLoad: "1 Ton",
+    aadharNumber: "",
+    licenseNumber: ""
+  });
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
     const subscription = client.models.Todo.observeQuery().subscribe({
       next: (data) => setTodos([...data.items]),
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const subscription = client.models.Driver.observeQuery().subscribe({
+      next: (data) => setDrivers([...data.items]),
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -120,6 +140,37 @@ function App() {
 
   function createTodo() {
     setShowModal(true);
+  }
+
+  function createDriver() {
+    setShowDriverModal(true);
+  }
+
+  function handleDriverSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    client.models.Driver.create({
+      name: driverFormData.name,
+      phoneNumber: driverFormData.phoneNumber,
+      vehicleNumber: driverFormData.vehicleNumber,
+      vehicleSize: driverFormData.vehicleSize,
+      maxLoad: driverFormData.maxLoad,
+      aadharNumber: driverFormData.aadharNumber,
+      licenseNumber: driverFormData.licenseNumber,
+      isActive: true
+    })
+    .then(() => {
+      setShowDriverModal(false);
+      setDriverFormData({
+        name: "",
+        phoneNumber: "",
+        vehicleNumber: "",
+        vehicleSize: "",
+        maxLoad: "1 Ton",
+        aadharNumber: "",
+        licenseNumber: ""
+      });
+    })
+    .catch((err) => alert("Failed to create driver: " + err.message));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -269,7 +320,7 @@ function App() {
     <main style={{ position: "relative", minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1>
-          My{user?.username ? ` (${user.username})` : ""} todos
+          {user?.attributes?.name || user?.signInDetails?.loginId || 'User'}'s list of rides
         </h1>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <input
@@ -279,12 +330,76 @@ function App() {
             onChange={(e) => setFilter(e.target.value)}
             style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
           />
-          <button onClick={createTodo}>+ new</button>
+          <button onClick={createTodo} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Ride</button>
+          <button onClick={createDriver} style={{ backgroundColor: "#17a2b8", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Driver</button>
           <button onClick={exportToCSV} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>⬇️ Export</button>
+          <div style={{ display: "flex", border: "1px solid #ccc", borderRadius: "4px", overflow: "hidden" }}>
+            <button 
+              onClick={() => setShowDrivers(false)} 
+              style={{ 
+                backgroundColor: !showDrivers ? "#007bff" : "white", 
+                color: !showDrivers ? "white" : "#007bff", 
+                border: "none", 
+                padding: "8px 12px", 
+                cursor: "pointer",
+                borderRight: "1px solid #ccc"
+              }}
+            >
+              Rides
+            </button>
+            <button 
+              onClick={() => setShowDrivers(true)} 
+              style={{ 
+                backgroundColor: showDrivers ? "#007bff" : "white", 
+                color: showDrivers ? "white" : "#007bff", 
+                border: "none", 
+                padding: "8px 12px", 
+                cursor: "pointer"
+              }}
+            >
+              Drivers
+            </button>
+          </div>
         </div>
       </div>
       {/* --- Table Styling Block: Grey Background & Status Column --- */}
       <div style={{ overflowX: "auto", maxWidth: "100vw", overflowY: "auto", maxHeight: "70vh", marginTop: "0" }}>
+        {showDrivers ? (
+          <table style={{ minWidth: "600px", width: "100%", borderCollapse: "collapse", marginTop: "1em", background: "#f4f4f4", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
+            <thead>
+              <tr>
+                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Name</th>
+                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Phone</th>
+                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Number</th>
+                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Size</th>
+                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Max Load</th>
+                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>License</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drivers.map((driver, idx) => (
+                <tr key={driver.id} style={{ background: idx % 2 === 0 ? "#f4f4f4" : "#e0e0e0", borderBottom: "1px solid #4a90e2" }}>
+                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.name}</td>
+                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.phoneNumber}</td>
+                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.vehicleNumber}</td>
+                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.vehicleSize} Ft</td>
+                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.maxLoad}</td>
+                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                      <span>{showLicense[driver.id] ? driver.licenseNumber : "••••••••"}</span>
+                      <button 
+                        onClick={() => setShowLicense(prev => ({...prev, [driver.id]: !prev[driver.id]}))}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}
+                      >
+                        {showLicense[driver.id] ? "🙈" : "👁️"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
         <table
           style={{
             minWidth: "900px",
@@ -456,6 +571,7 @@ function App() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
       {/* --- End Table Styling Block --- */}
       
@@ -823,6 +939,121 @@ function App() {
                 Yes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Driver Modal */}
+      {showDriverModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            maxWidth: "90vw"
+          }}>
+            <h3>Add New Driver</h3>
+            <form onSubmit={handleDriverSubmit}>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Name *:</label>
+                <input
+                  type="text"
+                  value={driverFormData.name}
+                  onChange={(e) => setDriverFormData({...driverFormData, name: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Phone Number *:</label>
+                <input
+                  type="text"
+                  value={driverFormData.phoneNumber}
+                  onChange={(e) => setDriverFormData({...driverFormData, phoneNumber: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Vehicle Number:</label>
+                <input
+                  type="text"
+                  value={driverFormData.vehicleNumber}
+                  onChange={(e) => setDriverFormData({...driverFormData, vehicleNumber: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Vehicle Size (Ft):</label>
+                <input
+                  type="text"
+                  value={driverFormData.vehicleSize}
+                  onChange={(e) => setDriverFormData({...driverFormData, vehicleSize: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Max Load:</label>
+                <select
+                  value={driverFormData.maxLoad}
+                  onChange={(e) => setDriverFormData({...driverFormData, maxLoad: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                >
+                  <option value="1 Ton">1 Ton</option>
+                  <option value="5 Ton">5 Ton</option>
+                  <option value="10 Ton">10 Ton</option>
+                  <option value="15 Ton">15 Ton</option>
+                  <option value="20 Ton">20 Ton</option>
+                  <option value="25 Ton">25 Ton</option>
+                  <option value="32 Ton">32 Ton</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Aadhar Number:</label>
+                <input
+                  type="text"
+                  value={driverFormData.aadharNumber}
+                  onChange={(e) => setDriverFormData({...driverFormData, aadharNumber: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label>License Number:</label>
+                <input
+                  type="text"
+                  value={driverFormData.licenseNumber}
+                  onChange={(e) => setDriverFormData({...driverFormData, licenseNumber: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDriverModal(false)}
+                  style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "8px 16px", backgroundColor: "#17a2b8", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  Create
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
