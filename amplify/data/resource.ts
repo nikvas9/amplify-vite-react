@@ -13,7 +13,7 @@ const schema = a.schema({
       customerName: a.string(),
       expense: a.float(),
       status: a.string(),
-      organization: a.string(),
+      partner: a.string(),
       fromLocation: a.string(),
       toLocation: a.string(),
       notes: a.string(),
@@ -34,6 +34,16 @@ const schema = a.schema({
       aadharNumber: a.string(),
       licenseNumber: a.string(),
       isActive: a.boolean(),
+      partner: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+  
+  Budget: a
+    .model({
+      partner: a.string(),
+      month: a.integer(),
+      year: a.integer(),
+      budget: a.float(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

@@ -209,7 +209,8 @@ function App() {
       maxLoad: driverFormData.maxLoad,
       aadharNumber: driverFormData.aadharNumber,
       licenseNumber: driverFormData.licenseNumber,
-      isActive: true
+      isActive: true,
+      partner: user?.signInDetails?.loginId || ""
     })
     .then(() => {
       setShowDriverModal(false);
@@ -239,7 +240,7 @@ function App() {
       customerName: formData.customerName,
       expense: parseFloat(formData.expense) || 0,
       status: formData.status,
-      organization: user?.signInDetails?.loginId || "",
+      partner: user?.signInDetails?.loginId || "",
       fromLocation: formData.fromLocation,
       toLocation: formData.toLocation,
       notes: formData.notes,
