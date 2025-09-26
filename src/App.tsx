@@ -43,7 +43,8 @@ function App() {
     toLocation: "",
     notes: "",
     driverName: "",
-    vehicleNumber: ""
+    vehicleNumber: "",
+    startDate: new Date().toISOString().split('T')[0]
   });
   const [showDriverDropdown, setShowDriverDropdown] = useState(false);
   const [filteredDrivers, setFilteredDrivers] = useState<Array<Schema["Driver"]["type"]>>([]);
@@ -57,7 +58,8 @@ function App() {
     toLocation: "",
     notes: "",
     driverName: "",
-    vehicleNumber: ""
+    vehicleNumber: "",
+    startDate: ""
   });
   const [originalData, setOriginalData] = useState({
     customerName: "",
@@ -67,7 +69,8 @@ function App() {
     toLocation: "",
     notes: "",
     driverName: "",
-    vehicleNumber: ""
+    vehicleNumber: "",
+    startDate: ""
   });
   const [driverFormData, setDriverFormData] = useState({
     name: "",
@@ -265,7 +268,8 @@ function App() {
       driverName: formData.driverName,
       vehicleNumber: formData.vehicleNumber,
       vehicleSize: selectedDriver?.vehicleSize || "",
-      maxLoad: selectedDriver?.maxLoad || ""
+      maxLoad: selectedDriver?.maxLoad || "",
+      startDate: formData.startDate
     };
 
     console.log("Todo data to create:", todoData);
@@ -283,7 +287,8 @@ function App() {
         toLocation: "",
         notes: "",
         driverName: "",
-        vehicleNumber: ""
+        vehicleNumber: "",
+        startDate: new Date().toISOString().split('T')[0]
       });
       setNotification("Ride added successfully!");
       setTimeout(() => {
@@ -309,7 +314,8 @@ function App() {
       toLocation: todo.toLocation || "",
       notes: todo.notes || "",
       driverName: todo.driverName || "",
-      vehicleNumber: todo.vehicleNumber || ""
+      vehicleNumber: todo.vehicleNumber || "",
+      startDate: todo.startDate || ""
     };
     
     setEditFormData(todoData);
@@ -337,7 +343,8 @@ function App() {
       driverName: editFormData.driverName,
       vehicleNumber: editFormData.vehicleNumber,
       vehicleSize: selectedDriver?.vehicleSize || "",
-      maxLoad: selectedDriver?.maxLoad || ""
+      maxLoad: selectedDriver?.maxLoad || "",
+      startDate: editFormData.startDate
     })
     .then(() => {
       console.log("Todo updated!");
@@ -721,6 +728,17 @@ function App() {
                   Status {sortField === "status" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
+              
+              <th style={{
+                borderBottom: "2px solid #90ee90",
+                borderRight: "1px solid #90ee90",
+                textAlign: "left",
+                padding: "8px"
+              }}>
+                <button onClick={() => handleSort("startDate")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Start Date {sortField === "startDate" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
 
               <th style={{
                 borderBottom: "2px solid #90ee90",
@@ -729,7 +747,7 @@ function App() {
                 padding: "8px"
               }}>
                 <button onClick={() => handleSort("updatedAt")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Updated At {sortField === "updatedAt" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Updated {sortField === "updatedAt" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -784,6 +802,10 @@ function App() {
                     <option value="Completed" style={{ color: "#28a745" }}>Completed</option>
                     <option value="Pending Payment" style={{ color: "#fd7e14" }}>Pending Payment</option>
                   </select>
+                </td>
+                
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
+                  {todo.startDate}
                 </td>
 
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
@@ -940,6 +962,15 @@ function App() {
                   onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})}
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                   readOnly
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Start Date:</label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>
@@ -1143,6 +1174,15 @@ function App() {
                   onChange={(e) => setEditFormData({...editFormData, vehicleNumber: e.target.value})}
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                   readOnly
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Start Date:</label>
+                <input
+                  type="date"
+                  value={editFormData.startDate}
+                  onChange={(e) => setEditFormData({...editFormData, startDate: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>

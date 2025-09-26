@@ -21,6 +21,7 @@ const schema = a.schema({
       vehicleNumber: a.string(),
       vehicleSize: a.string(),
       maxLoad: a.string(),
+      startDate: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
   
