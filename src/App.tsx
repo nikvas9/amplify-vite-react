@@ -39,6 +39,10 @@ function App() {
     driverName: "",
     vehicleNumber: ""
   });
+  const [showDriverDropdown, setShowDriverDropdown] = useState(false);
+  const [filteredDrivers, setFilteredDrivers] = useState<Array<Schema["Driver"]["type"]>>([]);
+  const [showEditDriverDropdown, setShowEditDriverDropdown] = useState(false);
+  const [filteredEditDrivers, setFilteredEditDrivers] = useState<Array<Schema["Driver"]["type"]>>([]);
   const [editFormData, setEditFormData] = useState({
     customerName: "",
     expense: "",
@@ -159,6 +163,35 @@ function App() {
       driverName,
       vehicleNumber: selectedDriver?.vehicleNumber || ""
     }));
+    setShowDriverDropdown(false);
+  }
+
+  function handleDriverInputChange(value: string) {
+    setFormData(prev => ({ ...prev, driverName: value }));
+    const filtered = drivers.filter(driver => 
+      driver.name?.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredDrivers(filtered);
+    setShowDriverDropdown(value.length > 0 && filtered.length > 0);
+  }
+
+  function handleEditDriverInputChange(value: string) {
+    setEditFormData(prev => ({ ...prev, driverName: value }));
+    const filtered = drivers.filter(driver => 
+      driver.name?.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredEditDrivers(filtered);
+    setShowEditDriverDropdown(value.length > 0 && filtered.length > 0);
+  }
+
+  function handleEditDriverChange(driverName: string) {
+    const selectedDriver = drivers.find(d => d.name === driverName);
+    setEditFormData(prev => ({
+      ...prev,
+      driverName,
+      vehicleNumber: selectedDriver?.vehicleNumber || ""
+    }));
+    setShowEditDriverDropdown(false);
   }
 
   function handleDriverSubmit(e: React.FormEvent) {
@@ -684,18 +717,54 @@ function App() {
                   style={{ width: "100%", padding: "5px", marginTop: "5px", minHeight: "60px" }}
                 />
               </div>
-              <div style={{ marginBottom: "10px" }}>
+              <div style={{ marginBottom: "10px", position: "relative" }}>
                 <label>Driver Name:</label>
-                <select
+                <input
+                  type="text"
                   value={formData.driverName}
-                  onChange={(e) => handleDriverChange(e.target.value)}
+                  onChange={(e) => handleDriverInputChange(e.target.value)}
+                  onFocus={() => {
+                    if (formData.driverName) {
+                      const filtered = drivers.filter(driver => 
+                        driver.name?.toLowerCase().includes(formData.driverName.toLowerCase())
+                      );
+                      setFilteredDrivers(filtered);
+                      setShowDriverDropdown(filtered.length > 0);
+                    }
+                  }}
+                  placeholder="Type to search drivers..."
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
-                >
-                  <option value="">Select Driver</option>
-                  {drivers.map(driver => (
-                    <option key={driver.id} value={driver.name}>{driver.name}</option>
-                  ))}
-                </select>
+                />
+                {showDriverDropdown && (
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "white",
+                    border: "1px solid #ccc",
+                    borderTop: "none",
+                    maxHeight: "150px",
+                    overflowY: "auto",
+                    zIndex: 1000
+                  }}>
+                    {filteredDrivers.map(driver => (
+                      <div
+                        key={driver.id}
+                        onClick={() => handleDriverChange(driver.name || "")}
+                        style={{
+                          padding: "8px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid #eee"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                      >
+                        {driver.name} - {driver.vehicleNumber}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ marginBottom: "10px" }}>
                 <label>Vehicle Number:</label>
@@ -849,25 +918,54 @@ function App() {
                   style={{ width: "100%", padding: "5px", marginTop: "5px", minHeight: "60px" }}
                 />
               </div>
-              <div style={{ marginBottom: "10px" }}>
+              <div style={{ marginBottom: "10px", position: "relative" }}>
                 <label>Driver Name:</label>
-                <select
+                <input
+                  type="text"
                   value={editFormData.driverName}
-                  onChange={(e) => {
-                    const selectedDriver = drivers.find(d => d.name === e.target.value);
-                    setEditFormData({
-                      ...editFormData, 
-                      driverName: e.target.value,
-                      vehicleNumber: selectedDriver?.vehicleNumber || ""
-                    });
+                  onChange={(e) => handleEditDriverInputChange(e.target.value)}
+                  onFocus={() => {
+                    if (editFormData.driverName) {
+                      const filtered = drivers.filter(driver => 
+                        driver.name?.toLowerCase().includes(editFormData.driverName.toLowerCase())
+                      );
+                      setFilteredEditDrivers(filtered);
+                      setShowEditDriverDropdown(filtered.length > 0);
+                    }
                   }}
+                  placeholder="Type to search drivers..."
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
-                >
-                  <option value="">Select Driver</option>
-                  {drivers.map(driver => (
-                    <option key={driver.id} value={driver.name}>{driver.name}</option>
-                  ))}
-                </select>
+                />
+                {showEditDriverDropdown && (
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "white",
+                    border: "1px solid #ccc",
+                    borderTop: "none",
+                    maxHeight: "150px",
+                    overflowY: "auto",
+                    zIndex: 1000
+                  }}>
+                    {filteredEditDrivers.map(driver => (
+                      <div
+                        key={driver.id}
+                        onClick={() => handleEditDriverChange(driver.name || "")}
+                        style={{
+                          padding: "8px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid #eee"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                      >
+                        {driver.name} - {driver.vehicleNumber}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ marginBottom: "10px" }}>
                 <label>Vehicle Number:</label>
