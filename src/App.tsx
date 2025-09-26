@@ -13,6 +13,11 @@ function formatDateCell(dateString?: string) {
   return { display, tooltip };
 }
 
+function formatIndianCurrency(amount: number | undefined): string {
+  if (!amount) return "₹    0";
+  return "₹    " + amount.toLocaleString("en-IN");
+}
+
 function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [filteredTodos, setFilteredTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
@@ -588,7 +593,7 @@ function App() {
               >
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.customId || todo.id}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.customerName}</td>
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>₹{todo.expense}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{formatIndianCurrency(todo.expense)}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.fromLocation}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.toLocation}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.driverName}</td>
@@ -1097,7 +1102,7 @@ function App() {
                 <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#fff3cd", border: "1px solid #ffeaa7", borderRadius: "4px", textAlign: "left" }}>
                   <div><strong>ID:</strong> {todo.customId || todo.id}</div>
                   <div><strong>Customer:</strong> {todo.customerName}</div>
-                  <div><strong>Expense:</strong> ₹{todo.expense}</div>
+                  <div><strong>Expense:</strong> {formatIndianCurrency(todo.expense)}</div>
                   <div><strong>From:</strong> {todo.fromLocation}</div>
                   <div><strong>To:</strong> {todo.toLocation}</div>
                   <div><strong>Driver:</strong> {todo.driverName}</div>
@@ -1240,11 +1245,7 @@ function App() {
         </div>
       )}
       <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
+        🥳 App successfully hosted..!
       </div>
       <button 
         onClick={signOut}
