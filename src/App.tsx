@@ -13,8 +13,8 @@ function formatDateCell(dateString?: string) {
   return { display, tooltip };
 }
 
-function formatIndianCurrency(amount: number | undefined): string {
-  if (!amount) return "₹    0";
+function formatIndianCurrency(amount: number | null | undefined): string {
+  if (!amount || amount === null) return "₹    0";
   return "₹    " + amount.toLocaleString("en-IN");
 }
 
@@ -239,7 +239,7 @@ function App() {
       customerName: formData.customerName,
       expense: parseFloat(formData.expense) || 0,
       status: formData.status,
-      organization: user?.signInDetails?.loginId || user?.attributes?.email || "",
+      organization: user?.signInDetails?.loginId || "",
       fromLocation: formData.fromLocation,
       toLocation: formData.toLocation,
       notes: formData.notes,
@@ -389,7 +389,7 @@ function App() {
     <main style={{ position: "relative", minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1>
-          {user?.attributes?.name || user?.signInDetails?.loginId || 'User'}'s list of rides
+          {user?.signInDetails?.loginId || 'User'}'s list of rides
         </h1>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <input
