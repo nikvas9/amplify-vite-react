@@ -82,6 +82,7 @@ function App() {
     licenseNumber: ""
   });
   const [showSummary, setShowSummary] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(300);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [budgetFormData, setBudgetFormData] = useState({
     month: new Date().getMonth() + 1,
@@ -433,7 +434,7 @@ function App() {
   }
 
   return (
-    <main style={{ display: "flex", minHeight: "100vh", width: "100%" }}>
+    <main style={{ display: "flex", flexDirection: "row", minHeight: "100vh", width: "100%", overflow: "hidden" }}>
       {/* Toggle Button - Fixed Position */}
       <button 
         onClick={() => setShowSummary(!showSummary)}
@@ -454,17 +455,25 @@ function App() {
       </button>
       
       {/* Sidebar - Summary */}
-      {showSummary && (
-        <div style={{ 
-          flex: "0 0 33.33%", 
-          backgroundColor: "#f8f9fa", 
-          borderRight: "2px solid #dee2e6", 
-          padding: "20px",
-          paddingTop: "70px",
-          overflowY: "auto",
-          height: "100vh"
-        }}>
-        <h2 style={{ margin: "0 0 15px 0", color: "#495057", fontSize: "18px" }}>Summary</h2>
+      <div style={{ 
+        position: "fixed",
+        left: 0,
+        top: 0,
+        width: showSummary ? `${sidebarWidth}px` : "0px", 
+        minWidth: showSummary ? "250px" : "0px",
+        maxWidth: showSummary ? "600px" : "0px",
+        backgroundColor: "#f8f9fa", 
+        borderRight: showSummary ? "2px solid #dee2e6" : "none", 
+        padding: showSummary ? "20px 20px 20px 10px" : "0",
+        paddingTop: showSummary ? "70px" : "0",
+        overflowY: showSummary ? "auto" : "hidden",
+        overflowX: "hidden",
+        height: "100vh",
+        transition: showSummary ? "none" : "all 0.3s ease",
+        visibility: showSummary ? "visible" : "hidden",
+        zIndex: 999
+      }}>
+        <h2 style={{ margin: "0 0 15px 10px", color: "#495057", fontSize: "18px", textAlign: "left" }}>Summary</h2>
         
         {/* Budget Summary */}
         {(() => {
@@ -477,9 +486,9 @@ function App() {
           const balance = totalBudget - totalSpent;
           
           return (
-            <div style={{ marginBottom: "15px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
+            <div style={{ marginBottom: "15px", marginLeft: "10px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
               <h4 style={{ margin: "0 0 8px 0", color: "#6f42c1", fontSize: "16px" }}>Budget</h4>
-              <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
+              <div style={{ fontSize: "12px", lineHeight: "1.4", wordWrap: "break-word", whiteSpace: "normal" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span>Budget: {formatIndianCurrency(totalBudget)}</span>
                   <button 
@@ -513,22 +522,22 @@ function App() {
           );
         })()}
         
-        {/* Rides & Drivers Summary */}
-        <div style={{ marginBottom: "15px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <h4 style={{ margin: 0, color: "#28a745", fontSize: "16px" }}>Rides</h4>
-            <h4 style={{ margin: 0, color: "#17a2b8", fontSize: "16px" }}>Drivers</h4>
+        {/* Rides Summary */}
+        <div style={{ marginBottom: "15px", marginLeft: "10px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
+          <h4 style={{ margin: "0 0 8px 0", color: "#28a745", fontSize: "16px" }}>Rides</h4>
+          <div style={{ fontSize: "12px", lineHeight: "1.4", wordWrap: "break-word", whiteSpace: "normal" }}>
+            <div>Total: {filteredTodos.length}</div>
+            <div>Done: {filteredTodos.filter(t => t.status === "Completed").length}</div>
+            <div>Active: {filteredTodos.filter(t => t.status === "In Progress").length}</div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", lineHeight: "1.4" }}>
-            <div>
-              <div>Total: {filteredTodos.length}</div>
-              <div>Done: {filteredTodos.filter(t => t.status === "Completed").length}</div>
-              <div>Active: {filteredTodos.filter(t => t.status === "In Progress").length}</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div>Total: {drivers.length}</div>
-              <div>Active: {drivers.filter(d => d.isActive).length}</div>
-            </div>
+        </div>
+        
+        {/* Drivers Summary */}
+        <div style={{ marginBottom: "15px", marginLeft: "10px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
+          <h4 style={{ margin: "0 0 8px 0", color: "#17a2b8", fontSize: "16px" }}>Drivers</h4>
+          <div style={{ fontSize: "12px", lineHeight: "1.4", wordWrap: "break-word", whiteSpace: "normal" }}>
+            <div>Total: {drivers.length}</div>
+            <div>Active: {drivers.filter(d => d.isActive).length}</div>
           </div>
         </div>
         
@@ -536,7 +545,8 @@ function App() {
         <button 
           onClick={exportToCSV} 
           style={{ 
-            width: "100%",
+            width: "calc(100% - 10px)",
+            marginLeft: "10px",
             backgroundColor: "#28a745", 
             color: "white", 
             border: "none", 
@@ -548,13 +558,56 @@ function App() {
         >
           ⬇️ Export CSV
         </button>
-        </div>
-      )}
-      
-
+        
+        {/* Resize Handle */}
+        {showSummary && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: "4px",
+              height: "100%",
+              backgroundColor: "#dee2e6",
+              cursor: "col-resize",
+              zIndex: 1000
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startWidth = sidebarWidth;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                const newWidth = startWidth + (e.clientX - startX);
+                if (newWidth >= 250 && newWidth <= 600) {
+                  setSidebarWidth(newWidth);
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
+          />
+        )}
+      </div>
       
       {/* Main Content */}
-      <div style={{ flex: "1", padding: "20px", overflowY: "auto", height: "100vh" }}>
+      <div style={{ 
+        width: "100%",
+        marginLeft: showSummary ? `${sidebarWidth}px` : "0px",
+        padding: "20px", 
+        paddingLeft: showSummary ? "20px" : "70px",
+        overflowY: "auto", 
+        overflowX: "auto",
+        height: "100vh",
+        transition: showSummary ? "none" : "all 0.3s ease",
+        minWidth: "600px"
+      }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <h1 style={{ margin: 0 }}>
             {user?.signInDetails?.loginId || 'User'}'s list of rides
@@ -735,17 +788,6 @@ function App() {
                 textAlign: "left",
                 padding: "8px"
               }}>
-                <button onClick={() => handleSort("startDate")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Start Date {sortField === "startDate" && (sortDirection === "asc" ? "↑" : "↓")}
-                </button>
-              </th>
-
-              <th style={{
-                borderBottom: "2px solid #90ee90",
-                borderRight: "1px solid #90ee90",
-                textAlign: "left",
-                padding: "8px"
-              }}>
                 <button onClick={() => handleSort("updatedAt")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
                   Updated {sortField === "updatedAt" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
@@ -803,11 +845,6 @@ function App() {
                     <option value="Pending Payment" style={{ color: "#fd7e14" }}>Pending Payment</option>
                   </select>
                 </td>
-                
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
-                  {todo.startDate}
-                </td>
-
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
                   {todo.updatedAt && (
                     <span title={`Time: ${formatDateCell(todo.updatedAt).tooltip}`}>
