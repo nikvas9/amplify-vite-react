@@ -30,28 +30,34 @@ function App() {
   const [deletingTodo, setDeletingTodo] = useState<string | null>(null);
   const [editingTodo, setEditingTodo] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    content: "",
-    userName: "",
+    customerName: "",
+    expense: "",
+    status: "In Progress",
+    fromLocation: "",
+    toLocation: "",
+    notes: "",
     driverName: "",
-    phoneNumber: "",
-    truckSize: "",
-    status: "In Progress"
+    vehicleNumber: ""
   });
   const [editFormData, setEditFormData] = useState({
-    content: "",
-    userName: "",
+    customerName: "",
+    expense: "",
+    status: "In Progress",
+    fromLocation: "",
+    toLocation: "",
+    notes: "",
     driverName: "",
-    phoneNumber: "",
-    truckSize: "",
-    status: "In Progress"
+    vehicleNumber: ""
   });
   const [originalData, setOriginalData] = useState({
-    content: "",
-    userName: "",
+    customerName: "",
+    expense: "",
+    status: "In Progress",
+    fromLocation: "",
+    toLocation: "",
+    notes: "",
     driverName: "",
-    phoneNumber: "",
-    truckSize: "",
-    status: "In Progress"
+    vehicleNumber: ""
   });
   const [driverFormData, setDriverFormData] = useState({
     name: "",
@@ -83,11 +89,11 @@ function App() {
       if (!filter) return true;
       const searchTerm = filter.toLowerCase();
       return (
-        (todo.content || "").toLowerCase().includes(searchTerm) ||
-        (todo.userName || "").toLowerCase().includes(searchTerm) ||
+        (todo.customerName || "").toLowerCase().includes(searchTerm) ||
         (todo.driverName || "").toLowerCase().includes(searchTerm) ||
-        (todo.phoneNumber || "").includes(filter) ||
-        (todo.truckSize || "").toLowerCase().includes(searchTerm) ||
+        (todo.vehicleNumber || "").includes(filter) ||
+        (todo.fromLocation || "").toLowerCase().includes(searchTerm) ||
+        (todo.toLocation || "").toLowerCase().includes(searchTerm) ||
         (todo.status || "").toLowerCase().includes(searchTerm)
       );
     });
@@ -146,6 +152,15 @@ function App() {
     setShowDriverModal(true);
   }
 
+  function handleDriverChange(driverName: string) {
+    const selectedDriver = drivers.find(d => d.name === driverName);
+    setFormData(prev => ({
+      ...prev,
+      driverName,
+      vehicleNumber: selectedDriver?.vehicleNumber || ""
+    }));
+  }
+
   function handleDriverSubmit(e: React.FormEvent) {
     e.preventDefault();
     client.models.Driver.create({
@@ -175,40 +190,47 @@ function App() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
     console.log("Form data:", formData);
     
+    const selectedDriver = drivers.find(d => d.name === formData.driverName);
     const customId = generateCustomId();
-    console.log("Generated customId:", customId);
 
     const todoData = {
-      content: formData.content,
-      userName: formData.userName,
-      driverName: formData.driverName,
-      phoneNumber: formData.phoneNumber,
-      truckSize: formData.truckSize,
+      customId,
+      customerName: formData.customerName,
+      expense: parseFloat(formData.expense) || 0,
       status: formData.status,
-      customId: customId,
+      organization: user?.signInDetails?.loginId || user?.attributes?.email || "",
+      fromLocation: formData.fromLocation,
+      toLocation: formData.toLocation,
+      notes: formData.notes,
+      driverName: formData.driverName,
+      vehicleNumber: formData.vehicleNumber,
+      vehicleSize: selectedDriver?.vehicleSize || "",
+      maxLoad: selectedDriver?.maxLoad || ""
     };
-    
-    console.log("Creating todo with data:", todoData);
+
+    console.log("Todo data to create:", todoData);
 
     client.models.Todo.create(todoData)
     .then((result) => {
-      console.log("Todo created successfully:", result);
+      console.log("Create success:", result);
       setShowModal(false);
       setFormData({
-        content: "",
-        userName: "",
+        customerName: "",
+        expense: "",
+        status: "In Progress",
+        fromLocation: "",
+        toLocation: "",
+        notes: "",
         driverName: "",
-        phoneNumber: "",
-        truckSize: "",
-        status: "In Progress"
+        vehicleNumber: ""
       });
     })
     .catch((err) => {
-      console.error("Create failed:", err);
-      console.error("Error details:", JSON.stringify(err, null, 2));
-      alert("Create failed: " + (err.message || err));
+      console.error("Create error:", err);
+      alert("Create failed: " + err.message);
     });
   }
 
@@ -217,12 +239,14 @@ function App() {
     if (!todo) return;
 
     const todoData = {
-      content: todo.content || "",
-      userName: todo.userName || "",
+      customerName: todo.customerName || "",
+      expense: todo.expense?.toString() || "",
+      status: todo.status || "In Progress",
+      fromLocation: todo.fromLocation || "",
+      toLocation: todo.toLocation || "",
+      notes: todo.notes || "",
       driverName: todo.driverName || "",
-      phoneNumber: todo.phoneNumber || "",
-      truckSize: todo.truckSize || "",
-      status: todo.status || "In Progress"
+      vehicleNumber: todo.vehicleNumber || ""
     };
     
     setEditFormData(todoData);
@@ -235,14 +259,20 @@ function App() {
     e.preventDefault();
     if (!editingTodo) return;
 
+    const selectedDriver = drivers.find(d => d.name === editFormData.driverName);
+
     client.models.Todo.update({
       id: editingTodo,
-      content: editFormData.content,
-      userName: editFormData.userName,
-      driverName: editFormData.driverName,
-      phoneNumber: editFormData.phoneNumber,
-      truckSize: editFormData.truckSize,
+      customerName: editFormData.customerName,
+      expense: parseFloat(editFormData.expense) || 0,
       status: editFormData.status,
+      fromLocation: editFormData.fromLocation,
+      toLocation: editFormData.toLocation,
+      notes: editFormData.notes,
+      driverName: editFormData.driverName,
+      vehicleNumber: editFormData.vehicleNumber,
+      vehicleSize: selectedDriver?.vehicleSize || "",
+      maxLoad: selectedDriver?.maxLoad || ""
     })
     .then(() => {
       console.log("Todo updated!");
@@ -288,16 +318,17 @@ function App() {
   }
 
   function exportToCSV() {
-    const headers = ['Custom ID', 'Content', 'User Name', 'Driver Name', 'Phone Number', 'Truck Size', 'Status', 'Updated At'];
+    const headers = ['Custom ID', 'Customer Name', 'Expense', 'From', 'To', 'Driver Name', 'Vehicle Number', 'Status', 'Updated At'];
     const csvContent = [
       headers.join(','),
       ...filteredTodos.map(todo => [
         `"${todo.customId || todo.id || ''}"`,
-        `"${(todo.content || '').replace(/"/g, '""')}"`,
-        `"${(todo.userName || '').replace(/"/g, '""')}"`,
+        `"${(todo.customerName || '').replace(/"/g, '""')}"`,
+        `"${todo.expense || ''}"`,
+        `"${(todo.fromLocation || '').replace(/"/g, '""')}"`,
+        `"${(todo.toLocation || '').replace(/"/g, '""')}"`,
         `"${(todo.driverName || '').replace(/"/g, '""')}"`,
-        `"${(todo.phoneNumber || '').replace(/"/g, '""')}"`,
-        `"${(todo.truckSize || '').replace(/"/g, '""')}"`,
+        `"${(todo.vehicleNumber || '').replace(/"/g, '""')}"`,
         `"${(todo.status || '').replace(/"/g, '""')}"`,
         `"${todo.updatedAt ? new Date(todo.updatedAt).toLocaleString() : ''}"`
       ].join(','))
@@ -428,8 +459,8 @@ function App() {
                 textAlign: "left",
                 padding: "8px"
               }}>
-                <button onClick={() => handleSort("content")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Content {sortField === "content" && (sortDirection === "asc" ? "↑" : "↓")}
+                <button onClick={() => handleSort("customerName")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Customer Name {sortField === "customerName" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -438,8 +469,28 @@ function App() {
                 textAlign: "left",
                 padding: "8px"
               }}>
-                <button onClick={() => handleSort("userName")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  User Name {sortField === "userName" && (sortDirection === "asc" ? "↑" : "↓")}
+                <button onClick={() => handleSort("expense")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Expense {sortField === "expense" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
+              <th style={{
+                borderBottom: "2px solid #90ee90",
+                borderRight: "1px solid #90ee90",
+                textAlign: "left",
+                padding: "8px"
+              }}>
+                <button onClick={() => handleSort("fromLocation")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  From {sortField === "fromLocation" && (sortDirection === "asc" ? "↑" : "↓")}
+                </button>
+              </th>
+              <th style={{
+                borderBottom: "2px solid #90ee90",
+                borderRight: "1px solid #90ee90",
+                textAlign: "left",
+                padding: "8px"
+              }}>
+                <button onClick={() => handleSort("toLocation")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  To {sortField === "toLocation" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -449,7 +500,7 @@ function App() {
                 padding: "8px"
               }}>
                 <button onClick={() => handleSort("driverName")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Driver Name {sortField === "driverName" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Driver {sortField === "driverName" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -458,18 +509,8 @@ function App() {
                 textAlign: "left",
                 padding: "8px"
               }}>
-                <button onClick={() => handleSort("phoneNumber")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Phone Number {sortField === "phoneNumber" && (sortDirection === "asc" ? "↑" : "↓")}
-                </button>
-              </th>
-              <th style={{
-                borderBottom: "2px solid #90ee90",
-                borderRight: "1px solid #90ee90",
-                textAlign: "left",
-                padding: "8px"
-              }}>
-                <button onClick={() => handleSort("truckSize")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Truck Size {sortField === "truckSize" && (sortDirection === "asc" ? "↑" : "↓")}
+                <button onClick={() => handleSort("vehicleNumber")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
+                  Vehicle {sortField === "vehicleNumber" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -513,11 +554,12 @@ function App() {
                 }}
               >
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.customId || todo.id}</td>
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.content}</td>
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.userName}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.customerName}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>₹{todo.expense}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.fromLocation}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.toLocation}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.driverName}</td>
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.phoneNumber}</td>
-                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.truckSize}</td>
+                <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>{todo.vehicleNumber}</td>
                 <td style={{ borderRight: "1px solid #90ee90", padding: "8px" }}>
                   <select 
                     value={todo.status || "In Progress"} 
@@ -533,7 +575,6 @@ function App() {
                       width: "100%",
                       color: todo.status === "Completed" ? "#28a745" : 
                              todo.status === "Blocked" ? "#dc3545" :
-                             todo.status === "Waiting" ? "#ffc107" :
                              todo.status === "Vehicle Repair" ? "#6f42c1" :
                              todo.status === "Pending Payment" ? "#fd7e14" : "#007bff",
                       fontWeight: "bold"
@@ -541,7 +582,6 @@ function App() {
                   >
                     <option value="In Progress" style={{ color: "#007bff" }}>In Progress</option>
                     <option value="Blocked" style={{ color: "#dc3545" }}>Blocked</option>
-                    <option value="Waiting" style={{ color: "#ffc107" }}>Waiting</option>
                     <option value="Vehicle Repair" style={{ color: "#6f42c1" }}>Vehicle Repair</option>
                     <option value="Completed" style={{ color: "#28a745" }}>Completed</option>
                     <option value="Pending Payment" style={{ color: "#fd7e14" }}>Pending Payment</option>
@@ -596,56 +636,75 @@ function App() {
             width: "400px",
             maxWidth: "90vw"
           }}>
-            <h3>Add New Todo</h3>
+            <h3>Add New Ride</h3>
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: "10px" }}>
-                <label>Content:</label>
+                <label>Customer Name *:</label>
                 <input
                   type="text"
-                  value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  value={formData.customerName}
+                  onChange={(e) => setFormData({...formData, customerName: e.target.value})}
                   required
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                 />
               </div>
               <div style={{ marginBottom: "10px" }}>
-                <label>User Name:</label>
+                <label>Expense *:</label>
                 <input
-                  type="text"
-                  value={formData.userName}
-                  onChange={(e) => setFormData({...formData, userName: e.target.value})}
+                  type="number"
+                  value={formData.expense}
+                  onChange={(e) => setFormData({...formData, expense: e.target.value})}
                   required
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>From Location:</label>
+                <input
+                  type="text"
+                  value={formData.fromLocation}
+                  onChange={(e) => setFormData({...formData, fromLocation: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>To Location:</label>
+                <input
+                  type="text"
+                  value={formData.toLocation}
+                  onChange={(e) => setFormData({...formData, toLocation: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Notes:</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px", minHeight: "60px" }}
                 />
               </div>
               <div style={{ marginBottom: "10px" }}>
                 <label>Driver Name:</label>
-                <input
-                  type="text"
+                <select
                   value={formData.driverName}
-                  onChange={(e) => setFormData({...formData, driverName: e.target.value})}
-                  required
+                  onChange={(e) => handleDriverChange(e.target.value)}
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
-                />
+                >
+                  <option value="">Select Driver</option>
+                  {drivers.map(driver => (
+                    <option key={driver.id} value={driver.name}>{driver.name}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ marginBottom: "10px" }}>
-                <label>Phone Number:</label>
+                <label>Vehicle Number:</label>
                 <input
                   type="text"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                  required
+                  value={formData.vehicleNumber}
+                  onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})}
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
-                />
-              </div>
-              <div style={{ marginBottom: "10px" }}>
-                <label>Truck Size:</label>
-                <input
-                  type="text"
-                  value={formData.truckSize}
-                  onChange={(e) => setFormData({...formData, truckSize: e.target.value})}
-                  required
-                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  readOnly
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>
@@ -657,7 +716,6 @@ function App() {
                 >
                   <option value="In Progress">In Progress</option>
                   <option value="Blocked">Blocked</option>
-                  <option value="Waiting">Waiting</option>
                   <option value="Vehicle Repair">Vehicle Repair</option>
                   <option value="Completed">Completed</option>
                   <option value="Pending Payment">Pending Payment</option>
@@ -713,7 +771,7 @@ function App() {
             width: "400px",
             maxWidth: "90vw"
           }}>
-            <h3>Edit Todo</h3>
+            <h3>Edit Ride</h3>
             
             {/* Changes Summary */}
             {Object.keys(editFormData).some(key => editFormData[key as keyof typeof editFormData] !== originalData[key as keyof typeof originalData]) && (
@@ -746,53 +804,79 @@ function App() {
             
             <form onSubmit={handleEditSubmit}>
               <div style={{ marginBottom: "10px" }}>
-                <label>Content:</label>
+                <label>Customer Name *:</label>
                 <input
                   type="text"
-                  value={editFormData.content}
-                  onChange={(e) => setEditFormData({...editFormData, content: e.target.value})}
+                  value={editFormData.customerName}
+                  onChange={(e) => setEditFormData({...editFormData, customerName: e.target.value})}
                   required
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                 />
               </div>
               <div style={{ marginBottom: "10px" }}>
-                <label>User Name:</label>
+                <label>Expense *:</label>
                 <input
-                  type="text"
-                  value={editFormData.userName}
-                  onChange={(e) => setEditFormData({...editFormData, userName: e.target.value})}
+                  type="number"
+                  value={editFormData.expense}
+                  onChange={(e) => setEditFormData({...editFormData, expense: e.target.value})}
                   required
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>From Location:</label>
+                <input
+                  type="text"
+                  value={editFormData.fromLocation}
+                  onChange={(e) => setEditFormData({...editFormData, fromLocation: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>To Location:</label>
+                <input
+                  type="text"
+                  value={editFormData.toLocation}
+                  onChange={(e) => setEditFormData({...editFormData, toLocation: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Notes:</label>
+                <textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({...editFormData, notes: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px", minHeight: "60px" }}
                 />
               </div>
               <div style={{ marginBottom: "10px" }}>
                 <label>Driver Name:</label>
-                <input
-                  type="text"
+                <select
                   value={editFormData.driverName}
-                  onChange={(e) => setEditFormData({...editFormData, driverName: e.target.value})}
-                  required
+                  onChange={(e) => {
+                    const selectedDriver = drivers.find(d => d.name === e.target.value);
+                    setEditFormData({
+                      ...editFormData, 
+                      driverName: e.target.value,
+                      vehicleNumber: selectedDriver?.vehicleNumber || ""
+                    });
+                  }}
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
-                />
+                >
+                  <option value="">Select Driver</option>
+                  {drivers.map(driver => (
+                    <option key={driver.id} value={driver.name}>{driver.name}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ marginBottom: "10px" }}>
-                <label>Phone Number:</label>
+                <label>Vehicle Number:</label>
                 <input
                   type="text"
-                  value={editFormData.phoneNumber}
-                  onChange={(e) => setEditFormData({...editFormData, phoneNumber: e.target.value})}
-                  required
+                  value={editFormData.vehicleNumber}
+                  onChange={(e) => setEditFormData({...editFormData, vehicleNumber: e.target.value})}
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
-                />
-              </div>
-              <div style={{ marginBottom: "10px" }}>
-                <label>Truck Size:</label>
-                <input
-                  type="text"
-                  value={editFormData.truckSize}
-                  onChange={(e) => setEditFormData({...editFormData, truckSize: e.target.value})}
-                  required
-                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  readOnly
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>
@@ -804,7 +888,6 @@ function App() {
                 >
                   <option value="In Progress">In Progress</option>
                   <option value="Blocked">Blocked</option>
-                  <option value="Waiting">Waiting</option>
                   <option value="Vehicle Repair">Vehicle Repair</option>
                   <option value="Completed">Completed</option>
                   <option value="Pending Payment">Pending Payment</option>
@@ -915,11 +998,12 @@ function App() {
               return todo ? (
                 <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#fff3cd", border: "1px solid #ffeaa7", borderRadius: "4px", textAlign: "left" }}>
                   <div><strong>ID:</strong> {todo.customId || todo.id}</div>
-                  <div><strong>Content:</strong> {todo.content}</div>
-                  <div><strong>User:</strong> {todo.userName}</div>
+                  <div><strong>Customer:</strong> {todo.customerName}</div>
+                  <div><strong>Expense:</strong> ₹{todo.expense}</div>
+                  <div><strong>From:</strong> {todo.fromLocation}</div>
+                  <div><strong>To:</strong> {todo.toLocation}</div>
                   <div><strong>Driver:</strong> {todo.driverName}</div>
-                  <div><strong>Phone:</strong> {todo.phoneNumber}</div>
-                  <div><strong>Truck Size:</strong> {todo.truckSize}</div>
+                  <div><strong>Vehicle:</strong> {todo.vehicleNumber}</div>
                   <div><strong>Status:</strong> {todo.status}</div>
                 </div>
               ) : null;
