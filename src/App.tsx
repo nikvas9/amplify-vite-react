@@ -22,6 +22,7 @@ function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [filteredTodos, setFilteredTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [drivers, setDrivers] = useState<Array<Schema["Driver"]["type"]>>([]);
+  const [budgets, setBudgets] = useState<Array<Schema["Budget"]["type"]>>([]);
   const [showDrivers, setShowDrivers] = useState(false);
   const [filter, setFilter] = useState("");
   const [sortField, setSortField] = useState<string>("");
@@ -37,7 +38,7 @@ function App() {
   const [formData, setFormData] = useState({
     customerName: "",
     expense: "",
-    status: "In Progress",
+    status: "",
     fromLocation: "",
     toLocation: "",
     notes: "",
@@ -78,6 +79,13 @@ function App() {
     licenseNumber: ""
   });
   const [showSummary, setShowSummary] = useState(true);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [budgetFormData, setBudgetFormData] = useState({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    budget: ""
+  });
+  const [notification, setNotification] = useState<string | null>(null);
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -90,6 +98,13 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Driver.observeQuery().subscribe({
       next: (data) => setDrivers([...data.items]),
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const subscription = client.models.Budget.observeQuery().subscribe({
+      next: (data) => setBudgets([...data.items]),
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -224,6 +239,8 @@ function App() {
         aadharNumber: "",
         licenseNumber: ""
       });
+      setNotification("Driver added successfully!");
+      setTimeout(() => setNotification(null), 3000);
     })
     .catch((err) => alert("Failed to create driver: " + err.message));
   }
@@ -256,17 +273,23 @@ function App() {
     client.models.Todo.create(todoData)
     .then((result) => {
       console.log("Create success:", result);
+      console.log("Setting notification...");
       setShowModal(false);
       setFormData({
         customerName: "",
         expense: "",
-        status: "In Progress",
+        status: "",
         fromLocation: "",
         toLocation: "",
         notes: "",
         driverName: "",
         vehicleNumber: ""
       });
+      setNotification("Ride added successfully!");
+      setTimeout(() => {
+        console.log("Clearing notification...");
+        setNotification(null);
+      }, 3000);
     })
     .catch((err) => {
       console.error("Create error:", err);
@@ -300,6 +323,8 @@ function App() {
     if (!editingTodo) return;
 
     const selectedDriver = drivers.find(d => d.name === editFormData.driverName);
+    const currentTodo = todos.find(t => t.id === editingTodo);
+    const customId = currentTodo?.customId || editingTodo;
 
     client.models.Todo.update({
       id: editingTodo,
@@ -318,6 +343,8 @@ function App() {
       console.log("Todo updated!");
       setShowEditModal(false);
       setEditingTodo(null);
+      setNotification(`Ride ${customId} updated successfully!`);
+      setTimeout(() => setNotification(null), 3000);
     })
     .catch((err) => {
       console.error("Update failed:", err);
@@ -351,9 +378,20 @@ function App() {
 
   function confirmDelete() {
     if (deletingTodo) {
-      client.models.Todo.delete({ id: deletingTodo });
-      setShowDeleteModal(false);
-      setDeletingTodo(null);
+      const todoToDelete = todos.find(t => t.id === deletingTodo);
+      const customId = todoToDelete?.customId || deletingTodo;
+      
+      client.models.Todo.delete({ id: deletingTodo })
+      .then(() => {
+        setShowDeleteModal(false);
+        setDeletingTodo(null);
+        setNotification(`Ride ${customId} deleted successfully!`);
+        setTimeout(() => setNotification(null), 3000);
+      })
+      .catch((err) => {
+        console.error("Delete failed:", err);
+        alert("Delete failed: " + err.message);
+      });
     }
   }
 
@@ -389,6 +427,25 @@ function App() {
 
   return (
     <main style={{ display: "flex", minHeight: "100vh", width: "100%" }}>
+      {/* Toggle Button - Fixed Position */}
+      <button 
+        onClick={() => setShowSummary(!showSummary)}
+        style={{ 
+          position: "fixed",
+          top: "20px",
+          left: "20px",
+          backgroundColor: "#6c757d", 
+          color: "white", 
+          border: "none", 
+          padding: "8px 12px", 
+          borderRadius: "4px", 
+          cursor: "pointer",
+          zIndex: 1000
+        }}
+      >
+        {showSummary ? "◀" : "▶"}
+      </button>
+      
       {/* Sidebar - Summary */}
       {showSummary && (
         <div style={{ 
@@ -396,89 +453,98 @@ function App() {
           backgroundColor: "#f8f9fa", 
           borderRight: "2px solid #dee2e6", 
           padding: "20px",
+          paddingTop: "70px",
           overflowY: "auto",
           height: "100vh"
         }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-          <button 
-            onClick={() => setShowSummary(!showSummary)}
-            style={{ 
-              backgroundColor: "#6c757d", 
-              color: "white", 
-              border: "none", 
-              padding: "6px 10px", 
-              borderRadius: "4px", 
-              cursor: "pointer",
-              fontSize: "12px"
-            }}
-          >
-            ◀
-          </button>
-          <h2 style={{ margin: 0, color: "#495057" }}>Summary</h2>
-        </div>
+        <h2 style={{ margin: "0 0 15px 0", color: "#495057", fontSize: "18px" }}>Summary</h2>
         
-        {/* Rides Summary */}
-        <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#28a745" }}>Rides</h3>
-          <div style={{ fontSize: "14px", color: "#6c757d" }}>
-            <div>Total: {filteredTodos.length}</div>
-            <div>Completed: {filteredTodos.filter(t => t.status === "Completed").length}</div>
-            <div>In Progress: {filteredTodos.filter(t => t.status === "In Progress").length}</div>
-            <div>Blocked: {filteredTodos.filter(t => t.status === "Blocked").length}</div>
+        {/* Budget Summary */}
+        {(() => {
+          const now = new Date();
+          const currentMonth = now.getMonth() + 1;
+          const currentYear = now.getFullYear();
+          const monthlyBudget = budgets.find(b => b.month === currentMonth && b.year === currentYear);
+          const totalBudget = monthlyBudget?.budget || 0;
+          const totalSpent = filteredTodos.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+          const balance = totalBudget - totalSpent;
+          
+          return (
+            <div style={{ marginBottom: "15px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
+              <h4 style={{ margin: "0 0 8px 0", color: "#6f42c1", fontSize: "16px" }}>Budget</h4>
+              <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Budget: {formatIndianCurrency(totalBudget)}</span>
+                  <button 
+                    onClick={() => {
+                      setBudgetFormData({
+                        month: currentMonth,
+                        year: currentYear,
+                        budget: monthlyBudget?.budget?.toString() || ""
+                      });
+                      setShowBudgetModal(true);
+                    }}
+                    style={{ 
+                      backgroundColor: "#6f42c1", 
+                      color: "white", 
+                      border: "none", 
+                      padding: "2px 6px", 
+                      borderRadius: "3px", 
+                      cursor: "pointer",
+                      fontSize: "10px"
+                    }}
+                  >
+                    ✏️
+                  </button>
+                </div>
+                <div>Spent: {formatIndianCurrency(totalSpent)}</div>
+                <div style={{ color: balance >= 0 ? "#28a745" : "#dc3545", fontWeight: "bold" }}>
+                  Balance: {formatIndianCurrency(balance)}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        
+        {/* Rides & Drivers Summary */}
+        <div style={{ marginBottom: "15px", padding: "12px", backgroundColor: "white", borderRadius: "6px", border: "1px solid #dee2e6" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+            <h4 style={{ margin: 0, color: "#28a745", fontSize: "16px" }}>Rides</h4>
+            <h4 style={{ margin: 0, color: "#17a2b8", fontSize: "16px" }}>Drivers</h4>
           </div>
-        </div>
-        
-        {/* Drivers Summary */}
-        <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#17a2b8" }}>Drivers</h3>
-          <div style={{ fontSize: "14px", color: "#6c757d" }}>
-            <div>Total: {drivers.length}</div>
-            <div>Active: {drivers.filter(d => d.isActive).length}</div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", lineHeight: "1.4" }}>
+            <div>
+              <div>Total: {filteredTodos.length}</div>
+              <div>Done: {filteredTodos.filter(t => t.status === "Completed").length}</div>
+              <div>Active: {filteredTodos.filter(t => t.status === "In Progress").length}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div>Total: {drivers.length}</div>
+              <div>Active: {drivers.filter(d => d.isActive).length}</div>
+            </div>
           </div>
         </div>
         
         {/* Export Section */}
-        <div style={{ padding: "15px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#6f42c1" }}>Export</h3>
-          <button 
-            onClick={exportToCSV} 
-            style={{ 
-              width: "100%",
-              backgroundColor: "#28a745", 
-              color: "white", 
-              border: "none", 
-              padding: "10px", 
-              borderRadius: "4px", 
-              cursor: "pointer",
-              fontSize: "14px"
-            }}
-          >
-            ⬇️ Export CSV
-          </button>
-        </div>
+        <button 
+          onClick={exportToCSV} 
+          style={{ 
+            width: "100%",
+            backgroundColor: "#28a745", 
+            color: "white", 
+            border: "none", 
+            padding: "8px", 
+            borderRadius: "4px", 
+            cursor: "pointer",
+            fontSize: "12px"
+          }}
+        >
+          ⬇️ Export CSV
+        </button>
         </div>
       )}
       
-      {/* Show Summary Button (when hidden) */}
-      {!showSummary && (
-        <button 
-          onClick={() => setShowSummary(true)}
-          style={{ 
-            position: "fixed",
-            top: "20px",
-            left: "20px",
-            backgroundColor: "#6c757d", 
-            color: "white", 
-            border: "none", 
-            padding: "8px 12px", 
-            borderRadius: "4px", 
-            cursor: "pointer",
-            zIndex: 1000
-          }}
-        >
-          ▶
-        </button>
-      )}
+
       
       {/* Main Content */}
       <div style={{ flex: "1", padding: "20px", overflowY: "auto", height: "100vh" }}>
@@ -877,12 +943,14 @@ function App() {
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>
-                <label>Status:</label>
+                <label>Status *:</label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  required
                   style={{ width: "100%", padding: "5px", marginTop: "5px" }}
                 >
+                  <option value="">Select Status</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Blocked">Blocked</option>
                   <option value="Vehicle Repair">Vehicle Repair</option>
@@ -1225,6 +1293,112 @@ function App() {
         </div>
       )}
       
+      {/* Budget Modal */}
+      {showBudgetModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "300px",
+            maxWidth: "90vw"
+          }}>
+            <h3>Set Budget</h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const existingBudget = budgets.find(b => b.month === budgetFormData.month && b.year === budgetFormData.year);
+              const budgetValue = parseFloat(budgetFormData.budget) || 0;
+              
+              if (existingBudget) {
+                client.models.Budget.update({
+                  id: existingBudget.id,
+                  budget: budgetValue
+                });
+              } else {
+                client.models.Budget.create({
+                  partner: user?.signInDetails?.loginId || "",
+                  month: budgetFormData.month,
+                  year: budgetFormData.year,
+                  budget: budgetValue
+                });
+              }
+              
+              setShowBudgetModal(false);
+              setBudgetFormData({
+                month: new Date().getMonth() + 1,
+                year: new Date().getFullYear(),
+                budget: ""
+              });
+            }}>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Month *:</label>
+                <select
+                  value={budgetFormData.month}
+                  onChange={(e) => setBudgetFormData({...budgetFormData, month: parseInt(e.target.value)})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                >
+                  {Array.from({length: 12}, (_, i) => (
+                    <option key={i+1} value={i+1}>
+                      {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Year *:</label>
+                <select
+                  value={budgetFormData.year}
+                  onChange={(e) => setBudgetFormData({...budgetFormData, year: parseInt(e.target.value)})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                >
+                  {[2024, 2025, 2026, 2027, 2028].map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label>Budget:</label>
+                <input
+                  type="number"
+                  value={budgetFormData.budget}
+                  onChange={(e) => setBudgetFormData({...budgetFormData, budget: e.target.value})}
+                  placeholder="0"
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBudgetModal(false)}
+                  style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "8px 16px", backgroundColor: "#6f42c1", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
       {/* Driver Modal */}
       {showDriverModal && (
         <div style={{
@@ -1342,6 +1516,24 @@ function App() {
       <div style={{ position: "fixed", bottom: "10px", left: "10px", fontSize: "12px", color: "#6c757d" }}>
         🥳 App successfully hosted..!
       </div>
+      {/* Notification */}
+      {notification && (
+        <div style={{
+          position: "fixed",
+          bottom: "80px",
+          right: "20px",
+          backgroundColor: "#28a745",
+          color: "white",
+          padding: "8px 16px",
+          borderRadius: "6px",
+          zIndex: 1000,
+          boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+          fontSize: "14px"
+        }}>
+          ✅ {notification}
+        </div>
+      )}
+      
       <button 
         onClick={signOut}
         style={{
