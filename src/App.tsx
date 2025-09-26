@@ -394,7 +394,7 @@ function App() {
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <input
             type="text"
-            placeholder="Filter todos..."
+            placeholder="Filter Rides..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
