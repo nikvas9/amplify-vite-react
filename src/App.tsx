@@ -77,6 +77,7 @@ function App() {
     aadharNumber: "",
     licenseNumber: ""
   });
+  const [showSummary, setShowSummary] = useState(true);
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -387,53 +388,145 @@ function App() {
   }
 
   return (
-    <main style={{ position: "relative", minHeight: "100vh" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1>
-          {user?.signInDetails?.loginId || 'User'}'s list of rides
-        </h1>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Filter Rides..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-          />
-          <button onClick={createTodo} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Ride</button>
-          <button onClick={createDriver} style={{ backgroundColor: "#17a2b8", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Driver</button>
-          <button onClick={exportToCSV} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>⬇️ Export</button>
-          <div style={{ display: "flex", border: "1px solid #ccc", borderRadius: "4px", overflow: "hidden" }}>
-            <button 
-              onClick={() => setShowDrivers(false)} 
-              style={{ 
-                backgroundColor: !showDrivers ? "#007bff" : "white", 
-                color: !showDrivers ? "white" : "#007bff", 
-                border: "none", 
-                padding: "8px 12px", 
-                cursor: "pointer",
-                borderRight: "1px solid #ccc"
-              }}
-            >
-              Rides
-            </button>
-            <button 
-              onClick={() => setShowDrivers(true)} 
-              style={{ 
-                backgroundColor: showDrivers ? "#007bff" : "white", 
-                color: showDrivers ? "white" : "#007bff", 
-                border: "none", 
-                padding: "8px 12px", 
-                cursor: "pointer"
-              }}
-            >
-              Drivers
-            </button>
+    <main style={{ display: "flex", minHeight: "100vh", width: "100%" }}>
+      {/* Sidebar - Summary */}
+      {showSummary && (
+        <div style={{ 
+          flex: "0 0 33.33%", 
+          backgroundColor: "#f8f9fa", 
+          borderRight: "2px solid #dee2e6", 
+          padding: "20px",
+          overflowY: "auto",
+          height: "100vh"
+        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+          <button 
+            onClick={() => setShowSummary(!showSummary)}
+            style={{ 
+              backgroundColor: "#6c757d", 
+              color: "white", 
+              border: "none", 
+              padding: "6px 10px", 
+              borderRadius: "4px", 
+              cursor: "pointer",
+              fontSize: "12px"
+            }}
+          >
+            ◀
+          </button>
+          <h2 style={{ margin: 0, color: "#495057" }}>Summary</h2>
+        </div>
+        
+        {/* Rides Summary */}
+        <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+          <h3 style={{ margin: "0 0 10px 0", color: "#28a745" }}>Rides</h3>
+          <div style={{ fontSize: "14px", color: "#6c757d" }}>
+            <div>Total: {filteredTodos.length}</div>
+            <div>Completed: {filteredTodos.filter(t => t.status === "Completed").length}</div>
+            <div>In Progress: {filteredTodos.filter(t => t.status === "In Progress").length}</div>
+            <div>Blocked: {filteredTodos.filter(t => t.status === "Blocked").length}</div>
           </div>
         </div>
-      </div>
-      {/* --- Table Styling Block: Grey Background & Status Column --- */}
-      <div style={{ overflowX: "auto", maxWidth: "100vw", overflowY: "auto", maxHeight: "70vh", marginTop: "0" }}>
+        
+        {/* Drivers Summary */}
+        <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+          <h3 style={{ margin: "0 0 10px 0", color: "#17a2b8" }}>Drivers</h3>
+          <div style={{ fontSize: "14px", color: "#6c757d" }}>
+            <div>Total: {drivers.length}</div>
+            <div>Active: {drivers.filter(d => d.isActive).length}</div>
+          </div>
+        </div>
+        
+        {/* Export Section */}
+        <div style={{ padding: "15px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+          <h3 style={{ margin: "0 0 10px 0", color: "#6f42c1" }}>Export</h3>
+          <button 
+            onClick={exportToCSV} 
+            style={{ 
+              width: "100%",
+              backgroundColor: "#28a745", 
+              color: "white", 
+              border: "none", 
+              padding: "10px", 
+              borderRadius: "4px", 
+              cursor: "pointer",
+              fontSize: "14px"
+            }}
+          >
+            ⬇️ Export CSV
+          </button>
+        </div>
+        </div>
+      )}
+      
+      {/* Show Summary Button (when hidden) */}
+      {!showSummary && (
+        <button 
+          onClick={() => setShowSummary(true)}
+          style={{ 
+            position: "fixed",
+            top: "20px",
+            left: "20px",
+            backgroundColor: "#6c757d", 
+            color: "white", 
+            border: "none", 
+            padding: "8px 12px", 
+            borderRadius: "4px", 
+            cursor: "pointer",
+            zIndex: 1000
+          }}
+        >
+          ▶
+        </button>
+      )}
+      
+      {/* Main Content */}
+      <div style={{ flex: "1", padding: "20px", overflowY: "auto", height: "100vh" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <h1 style={{ margin: 0 }}>
+            {user?.signInDetails?.loginId || 'User'}'s list of rides
+          </h1>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Filter Rides..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+            />
+            <button onClick={createTodo} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Ride</button>
+            <button onClick={createDriver} style={{ backgroundColor: "#17a2b8", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Driver</button>
+            <div style={{ display: "flex", border: "1px solid #ccc", borderRadius: "4px", overflow: "hidden" }}>
+              <button 
+                onClick={() => setShowDrivers(false)} 
+                style={{ 
+                  backgroundColor: !showDrivers ? "#007bff" : "white", 
+                  color: !showDrivers ? "white" : "#007bff", 
+                  border: "none", 
+                  padding: "8px 12px", 
+                  cursor: "pointer",
+                  borderRight: "1px solid #ccc"
+                }}
+              >
+                Rides
+              </button>
+              <button 
+                onClick={() => setShowDrivers(true)} 
+                style={{ 
+                  backgroundColor: showDrivers ? "#007bff" : "white", 
+                  color: showDrivers ? "white" : "#007bff", 
+                  border: "none", 
+                  padding: "8px 12px", 
+                  cursor: "pointer"
+                }}
+              >
+                Drivers
+              </button>
+            </div>
+          </div>
+        </div>
+        {/* --- Table Styling Block: Grey Background & Status Column --- */}
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 120px)" }}>
         {showDrivers ? (
           <table style={{ minWidth: "600px", width: "100%", borderCollapse: "collapse", marginTop: "1em", background: "#f4f4f4", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
             <thead>
@@ -651,8 +744,9 @@ function App() {
           </tbody>
         </table>
         )}
+        </div>
+        {/* --- End Table Styling Block --- */}
       </div>
-      {/* --- End Table Styling Block --- */}
       
       {/* Modal */}
       {showModal && (
@@ -1245,7 +1339,7 @@ function App() {
           </div>
         </div>
       )}
-      <div>
+      <div style={{ position: "fixed", bottom: "10px", left: "10px", fontSize: "12px", color: "#6c757d" }}>
         🥳 App successfully hosted..!
       </div>
       <button 
