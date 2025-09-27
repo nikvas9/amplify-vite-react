@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import type { Schema } from "../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
@@ -90,6 +90,12 @@ function App() {
     budget: ""
   });
   const [notification, setNotification] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'bot', message: string}>>([]);
+  const [lastBotResponse, setLastBotResponse] = useState<string>("");
+  const [lastContext, setLastContext] = useState<{type: string, count: number}>({type: "", count: 0});
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -112,6 +118,12 @@ function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   useEffect(() => {
     let filtered = todos.filter(todo => {
@@ -401,6 +413,148 @@ function App() {
         alert("Delete failed: " + err.message);
       });
     }
+  }
+
+  function handleChatSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    
+    const userMessage = chatInput.trim();
+    setChatMessages(prev => [...prev, {type: 'user', message: userMessage}]);
+    
+    let botResponse = "I'm not sure about that. Try asking about budget, rides, drivers, expenses, vehicles, or revenue.";
+    const query = userMessage.toLowerCase()
+      .replace(/trips/g, 'rides')
+      .replace(/trip/g, 'ride')
+      .replace(/vehicles?/g, 'vehicle')
+      .replace(/cars?/g, 'vehicle')
+      .replace(/trucks?/g, 'vehicle')
+      .replace(/engaged/g, 'working')
+      .replace(/involved/g, 'working');
+    
+    // Handle previous question references and context
+    if ((query.includes('previous') || query.includes('last') || query.includes('that') || query.includes('those')) && !query.includes('expense')) {
+      if (lastBotResponse) {
+        botResponse = `My previous answer was: ${lastBotResponse}`;
+      } else {
+        botResponse = "I don't have a previous answer to refer to.";
+      }
+    }
+    // Handle expense questions about previous context (those/that rides)
+    else if ((query.includes('those') || query.includes('that') || query.includes('three')) && (query.includes('expense') || query.includes('total') || query.includes('cost'))) {
+      if (lastContext.type === 'completed') {
+        const completedRides = filteredTodos.filter(t => t.status === "Completed");
+        const totalExpenses = completedRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+        botResponse = `Total expenses for those ${completedRides.length} completed rides: ${formatIndianCurrency(totalExpenses)}`;
+      } else if (lastContext.type === 'progress') {
+        const inProgressRides = filteredTodos.filter(t => t.status === "In Progress");
+        const totalExpenses = inProgressRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+        botResponse = `Total expenses for those ${inProgressRides.length} rides in progress: ${formatIndianCurrency(totalExpenses)}`;
+      } else if (lastContext.type === 'blocked') {
+        const blockedRides = filteredTodos.filter(t => t.status === "Blocked");
+        const totalExpenses = blockedRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+        botResponse = `Total expenses for those ${blockedRides.length} blocked rides: ${formatIndianCurrency(totalExpenses)}`;
+      } else {
+        botResponse = "I need more context. Please ask about specific rides first (completed, in progress, or blocked).";
+      }
+    }
+    // Cross-data queries (combining drivers, rides, budget)
+    else if ((query.includes('driver') || query.includes('drivers')) && (query.includes('working') || query.includes('rides'))) {
+      const engagedDrivers = new Set(filteredTodos.map(todo => todo.driverName).filter(name => name));
+      const driverNames = Array.from(engagedDrivers).join(', ');
+      botResponse = `${engagedDrivers.size} drivers are engaged in rides: ${driverNames || 'None'}`;
+    }
+    else if (query.includes('revenue') || query.includes('total revenue')) {
+      const completedRides = filteredTodos.filter(t => t.status === "Completed");
+      const totalRevenue = completedRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+      botResponse = `Total revenue from ${completedRides.length} completed rides: ${formatIndianCurrency(totalRevenue)}`;
+    }
+    else if (query.includes('profit') || query.includes('net profit')) {
+      const now = new Date();
+      const monthlyBudget = budgets.find(b => b.month === now.getMonth() + 1 && b.year === now.getFullYear());
+      const totalBudget = monthlyBudget?.budget || 0;
+      const completedRides = filteredTodos.filter(t => t.status === "Completed");
+      const totalRevenue = completedRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+      const profit = totalRevenue - totalBudget;
+      botResponse = `Revenue: ${formatIndianCurrency(totalRevenue)}, Budget: ${formatIndianCurrency(totalBudget)}, Net Profit: ${formatIndianCurrency(profit)}`;
+    }
+    // Budget queries
+    else if (query.includes('budget')) {
+      const now = new Date();
+      const monthlyBudget = budgets.find(b => b.month === now.getMonth() + 1 && b.year === now.getFullYear());
+      const totalBudget = monthlyBudget?.budget || 0;
+      const totalSpent = filteredTodos.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+      botResponse = `Current budget: ${formatIndianCurrency(totalBudget)}, Spent: ${formatIndianCurrency(totalSpent)}, Balance: ${formatIndianCurrency(totalBudget - totalSpent)}`;
+    }
+    // Expense queries
+    else if (query.includes('expense') || query.includes('cost') || query.includes('total') && (query.includes('completed') || query.includes('done'))) {
+      const completedRides = filteredTodos.filter(t => t.status === "Completed");
+      const totalExpenses = completedRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+      botResponse = `Total expenses for ${completedRides.length} completed rides: ${formatIndianCurrency(totalExpenses)}`;
+    }
+    else if (query.includes('expense') && query.includes('progress')) {
+      const inProgressRides = filteredTodos.filter(t => t.status === "In Progress");
+      const totalExpenses = inProgressRides.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+      botResponse = `Total expenses for ${inProgressRides.length} rides in progress: ${formatIndianCurrency(totalExpenses)}`;
+    }
+    else if (query.includes('total expense') || query.includes('all expense')) {
+      const totalExpenses = filteredTodos.reduce((sum, todo) => sum + (todo.expense || 0), 0);
+      botResponse = `Total expenses for all ${filteredTodos.length} rides: ${formatIndianCurrency(totalExpenses)}`;
+    }
+    // Ride status queries with context tracking
+    else if (query.includes('rides') && query.includes('progress')) {
+      const inProgress = filteredTodos.filter(t => t.status === "In Progress").length;
+      botResponse = `There are ${inProgress} rides currently in progress.`;
+      setLastContext({type: 'progress', count: inProgress});
+    }
+    else if (query.includes('rides') && query.includes('completed')) {
+      const completed = filteredTodos.filter(t => t.status === "Completed").length;
+      botResponse = `${completed} rides have been completed.`;
+      setLastContext({type: 'completed', count: completed});
+    }
+    else if (query.includes('rides') && query.includes('blocked')) {
+      const blocked = filteredTodos.filter(t => t.status === "Blocked").length;
+      botResponse = `${blocked} rides are currently blocked.`;
+      setLastContext({type: 'blocked', count: blocked});
+    }
+    // Vehicle queries
+    else if (query.includes('how many vehicle')) {
+      const uniqueVehicles = new Set(drivers.map(d => d.vehicleNumber).filter(v => v));
+      botResponse = `There are ${uniqueVehicles.size} unique vehicles.`;
+    }
+    else if (query.includes('unique') && query.includes('max load')) {
+      const uniqueMaxLoads = new Set(drivers.map(d => d.maxLoad).filter(m => m));
+      const loads = Array.from(uniqueMaxLoads).join(', ');
+      botResponse = `There are ${uniqueMaxLoads.size} unique max loads: ${loads}`;
+    }
+    else if (query.includes('vehicle') && query.includes('1 ton')) {
+      const oneTonVehicles = drivers.filter(d => d.maxLoad === '1 Ton' && d.vehicleNumber);
+      const vehicleNumbers = oneTonVehicles.map(d => d.vehicleNumber).join(', ');
+      botResponse = `There are ${oneTonVehicles.length} vehicles with 1 Ton max load: ${vehicleNumbers || 'None'}`;
+    }
+    else if (query.includes('vehicle') && query.includes('5 ton')) {
+      const fiveTonVehicles = drivers.filter(d => d.maxLoad === '5 Ton' && d.vehicleNumber);
+      const vehicleNumbers = fiveTonVehicles.map(d => d.vehicleNumber).join(', ');
+      botResponse = `There are ${fiveTonVehicles.length} vehicles with 5 Ton max load: ${vehicleNumbers || 'None'}`;
+    }
+    else if (query.includes('vehicle') && query.includes('10 ton')) {
+      const tenTonVehicles = drivers.filter(d => d.maxLoad === '10 Ton' && d.vehicleNumber);
+      const vehicleNumbers = tenTonVehicles.map(d => d.vehicleNumber).join(', ');
+      botResponse = `There are ${tenTonVehicles.length} vehicles with 10 Ton max load: ${vehicleNumbers || 'None'}`;
+    }
+    // Driver queries
+    else if (query.includes('drivers')) {
+      const activeDrivers = drivers.filter(d => d.isActive).length;
+      botResponse = `There are ${drivers.length} total drivers, ${activeDrivers} are active.`;
+    }
+    // Total rides
+    else if (query.includes('total rides')) {
+      botResponse = `Total rides: ${filteredTodos.length}`;
+    }
+    
+    setLastBotResponse(botResponse);
+    setChatMessages(prev => [...prev, {type: 'bot', message: botResponse}]);
+    setChatInput("");
   }
 
   function exportToCSV() {
@@ -1593,11 +1747,85 @@ function App() {
       <div style={{ position: "fixed", bottom: "10px", left: "10px", fontSize: "12px", color: "#6c757d" }}>
         🥳 App successfully hosted..!
       </div>
+      {/* Chat Popup */}
+      {showChat && (
+        <div style={{
+          position: "fixed",
+          bottom: "80px",
+          right: "20px",
+          width: "300px",
+          height: "400px",
+          backgroundColor: "white",
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          zIndex: 1000,
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          <div style={{ padding: "10px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h4 style={{ margin: 0, fontSize: "14px" }}>Ask Questions</h4>
+            <button onClick={() => setShowChat(false)} style={{ background: "none", border: "none", fontSize: "16px", cursor: "pointer" }}>×</button>
+          </div>
+          <div ref={chatMessagesRef} style={{ flex: 1, padding: "10px", overflowY: "auto", fontSize: "12px" }}>
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} style={{ marginBottom: "8px", textAlign: msg.type === 'user' ? 'right' : 'left' }}>
+                <div style={{
+                  display: "inline-block",
+                  padding: "6px 10px",
+                  borderRadius: "12px",
+                  backgroundColor: msg.type === 'user' ? "#007bff" : "#f1f1f1",
+                  color: msg.type === 'user' ? "white" : "black",
+                  maxWidth: "80%",
+                  wordWrap: "break-word"
+                }}>
+                  {msg.message}
+                </div>
+              </div>
+            ))}
+          </div>
+          <form onSubmit={handleChatSubmit} style={{ padding: "10px", borderTop: "1px solid #eee" }}>
+            <div style={{ display: "flex", gap: "5px" }}>
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask about budget, rides, drivers..."
+                style={{ flex: 1, padding: "6px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "12px" }}
+              />
+              <button type="submit" style={{ padding: "6px 10px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", fontSize: "12px" }}>Send</button>
+            </div>
+          </form>
+        </div>
+      )}
+      
+      {/* Chat Button */}
+      <button 
+        onClick={() => setShowChat(!showChat)}
+        style={{
+          position: "fixed",
+          bottom: "80px",
+          right: showChat ? "340px" : "20px",
+          width: "50px",
+          height: "50px",
+          backgroundColor: "#007bff",
+          color: "white",
+          border: "none",
+          borderRadius: "50%",
+          cursor: "pointer",
+          fontSize: "20px",
+          zIndex: 1001,
+          transition: "right 0.3s ease"
+        }}
+      >
+        💬
+      </button>
+      
       {/* Notification */}
       {notification && (
         <div style={{
           position: "fixed",
-          bottom: "80px",
+          bottom: "140px",
           right: "20px",
           backgroundColor: "#28a745",
           color: "white",
