@@ -114,7 +114,7 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Todo.observeQuery().subscribe({
       next: (data) => {
-        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId && (item.isActive === null || item.isActive === undefined || item.isActive === true));
+        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId && ((item as any).isActive !== false));
         setTodos([...userTodos]);
       },
     });
@@ -124,7 +124,7 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Driver.observeQuery().subscribe({
       next: (data) => {
-        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId && (item.isActive === null || item.isActive === undefined || item.isActive === true));
+        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId && ((item as any).isActive !== false));
         setDrivers([...userDrivers]);
       },
     });
@@ -659,7 +659,7 @@ function App() {
     }
     // Driver queries
     else if (query.includes('drivers')) {
-      const activeDrivers = drivers.filter(d => d.isActive).length;
+      const activeDrivers = drivers.filter(d => (d as any).isActive !== false).length;
       botResponse = `There are ${drivers.length} total drivers, ${activeDrivers} are active.`;
     }
     // Total rides
@@ -853,7 +853,7 @@ function App() {
           <h4 style={{ margin: "0 0 8px 0", color: "#17a2b8", fontSize: "16px" }}>Drivers</h4>
           <div style={{ fontSize: "12px", lineHeight: "1.4", wordWrap: "break-word", whiteSpace: "normal" }}>
             <div>Total: {drivers.length}</div>
-            <div>Active: {drivers.filter(d => d.isActive).length}</div>
+            <div>Active: {drivers.filter(d => (d as any).isActive !== false).length}</div>
           </div>
         </div>
         
