@@ -596,6 +596,55 @@ function App() {
     URL.revokeObjectURL(url);
   }
 
+  function downloadDriverTemplate() {
+    const headers = ['Name', 'Phone Number', 'Vehicle Number', 'Vehicle Size', 'Max Load', 'Aadhar Number', 'License Number'];
+    const sampleData = ['John Doe', '9876543210', 'KA01AB1234', '14', '5 Ton', '123456789012', 'DL1234567890'];
+    const csvContent = [headers.join(','), sampleData.join(',')].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'drivers_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDriverUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const csv = e.target?.result as string;
+      const lines = csv.split('\n');
+      const headers = lines[0].split(',');
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        if (values.length >= 7 && values[0].trim()) {
+          client.models.Driver.create({
+            name: values[0].trim(),
+            phoneNumber: values[1].trim(),
+            vehicleNumber: values[2].trim(),
+            vehicleSize: values[3].trim(),
+            maxLoad: values[4].trim(),
+            aadharNumber: values[5].trim(),
+            licenseNumber: values[6].trim(),
+            isActive: true,
+            partner: user?.signInDetails?.loginId || ""
+          });
+        }
+      }
+      setNotification("Drivers uploaded successfully!");
+      setTimeout(() => setNotification(null), 3000);
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
   return (
     <main style={{ display: "flex", flexDirection: "row", minHeight: "100vh", width: "100%", overflow: "hidden" }}>
       {/* Toggle Button - Fixed Position */}
@@ -817,40 +866,75 @@ function App() {
         {/* --- Table Styling Block: Grey Background & Status Column --- */}
         <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 120px)" }}>
         {showDrivers ? (
-          <table style={{ minWidth: "600px", width: "100%", borderCollapse: "collapse", marginTop: "1em", background: "#f4f4f4", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-            <thead>
-              <tr>
-                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Name</th>
-                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Phone</th>
-                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Number</th>
-                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Size</th>
-                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Max Load</th>
-                <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>License</th>
-              </tr>
-            </thead>
-            <tbody>
-              {drivers.map((driver, idx) => (
-                <tr key={driver.id} style={{ background: idx % 2 === 0 ? "#f4f4f4" : "#e0e0e0", borderBottom: "1px solid #4a90e2" }}>
-                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.name}</td>
-                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.phoneNumber}</td>
-                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.vehicleNumber}</td>
-                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.vehicleSize} Ft</td>
-                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.maxLoad}</td>
-                  <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                      <span>{showLicense[driver.id] ? driver.licenseNumber : "••••••••"}</span>
-                      <button 
-                        onClick={() => setShowLicense(prev => ({...prev, [driver.id]: !prev[driver.id]}))}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}
-                      >
-                        {showLicense[driver.id] ? "🙈" : "👁️"}
-                      </button>
-                    </div>
-                  </td>
+          <>
+            <table style={{ minWidth: "600px", width: "100%", borderCollapse: "collapse", marginTop: "1em", background: "#f4f4f4", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
+              <thead>
+                <tr>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Name</th>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Phone</th>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Number</th>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Size</th>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Max Load</th>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>License</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {drivers.map((driver, idx) => (
+                  <tr key={driver.id} style={{ background: idx % 2 === 0 ? "#f4f4f4" : "#e0e0e0", borderBottom: "1px solid #4a90e2" }}>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.name}</td>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.phoneNumber}</td>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.vehicleNumber}</td>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.vehicleSize} Ft</td>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>{driver.maxLoad}</td>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span>{showLicense[driver.id] ? driver.licenseNumber : "••••••••"}</span>
+                        <button 
+                          onClick={() => setShowLicense(prev => ({...prev, [driver.id]: !prev[driver.id]}))}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}
+                        >
+                          {showLicense[driver.id] ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
+              <button 
+                onClick={downloadDriverTemplate}
+                style={{ 
+                  backgroundColor: "#6c757d", 
+                  color: "white", 
+                  border: "none", 
+                  padding: "8px 12px", 
+                  borderRadius: "4px", 
+                  cursor: "pointer",
+                  fontSize: "12px"
+                }}
+              >
+                📥 Download Template
+              </button>
+              <label style={{ 
+                backgroundColor: "#17a2b8", 
+                color: "white", 
+                border: "none", 
+                padding: "8px 12px", 
+                borderRadius: "4px", 
+                cursor: "pointer",
+                fontSize: "12px"
+              }}>
+                📤 Upload CSV
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  onChange={handleDriverUpload}
+                  style={{ display: "none" }}
+                />
+              </label>
+            </div>
+          </>
         ) : (
         <table
           style={{
