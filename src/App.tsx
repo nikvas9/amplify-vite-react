@@ -32,9 +32,22 @@ function App() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteDriverModal, setShowDeleteDriverModal] = useState(false);
   const [showLicense, setShowLicense] = useState<{[key: string]: boolean}>({});
   const [deletingTodo, setDeletingTodo] = useState<string | null>(null);
+  const [deletingDriver, setDeletingDriver] = useState<string | null>(null);
   const [editingTodo, setEditingTodo] = useState<string | null>(null);
+  const [editingDriver, setEditingDriver] = useState<string | null>(null);
+  const [showEditDriverModal, setShowEditDriverModal] = useState(false);
+  const [editDriverFormData, setEditDriverFormData] = useState({
+    name: "",
+    phoneNumber: "",
+    vehicleNumber: "",
+    vehicleSize: "",
+    maxLoad: "1 Ton",
+    aadharNumber: "",
+    licenseNumber: ""
+  });
   const [formData, setFormData] = useState({
     customerName: "",
     expense: "",
@@ -101,7 +114,7 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Todo.observeQuery().subscribe({
       next: (data) => {
-        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId);
+        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId && item.isActive !== false);
         setTodos([...userTodos]);
       },
     });
@@ -111,7 +124,7 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Driver.observeQuery().subscribe({
       next: (data) => {
-        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId);
+        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId && item.isActive !== false);
         setDrivers([...userDrivers]);
       },
     });
@@ -250,7 +263,6 @@ function App() {
       maxLoad: driverFormData.maxLoad,
       aadharNumber: driverFormData.aadharNumber,
       licenseNumber: driverFormData.licenseNumber,
-      isActive: true,
       partner: user?.signInDetails?.loginId || ""
     })
     .then(() => {
@@ -268,6 +280,46 @@ function App() {
       setTimeout(() => setNotification(null), 3000);
     })
     .catch((err) => alert("Failed to create driver: " + err.message));
+  }
+
+  function editDriver(id: string) {
+    const driver = drivers.find(d => d.id === id);
+    if (!driver) return;
+    
+    setEditDriverFormData({
+      name: driver.name || "",
+      phoneNumber: driver.phoneNumber || "",
+      vehicleNumber: driver.vehicleNumber || "",
+      vehicleSize: driver.vehicleSize || "",
+      maxLoad: driver.maxLoad || "1 Ton",
+      aadharNumber: driver.aadharNumber || "",
+      licenseNumber: driver.licenseNumber || ""
+    });
+    setEditingDriver(id);
+    setShowEditDriverModal(true);
+  }
+
+  function handleEditDriverSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingDriver) return;
+
+    client.models.Driver.update({
+      id: editingDriver,
+      name: editDriverFormData.name,
+      phoneNumber: editDriverFormData.phoneNumber,
+      vehicleNumber: editDriverFormData.vehicleNumber,
+      vehicleSize: editDriverFormData.vehicleSize,
+      maxLoad: editDriverFormData.maxLoad,
+      aadharNumber: editDriverFormData.aadharNumber,
+      licenseNumber: editDriverFormData.licenseNumber
+    })
+    .then(() => {
+      setShowEditDriverModal(false);
+      setEditingDriver(null);
+      setNotification("Driver updated successfully!");
+      setTimeout(() => setNotification(null), 3000);
+    })
+    .catch((err) => alert("Update failed: " + err.message));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -405,21 +457,75 @@ function App() {
     setShowDeleteModal(true);
   }
 
+  function deleteDriver(id: string) {
+    setDeletingDriver(id);
+    setShowDeleteDriverModal(true);
+  }
+
+  function confirmDriverDelete() {
+    if (deletingDriver) {
+      const driverToDelete = drivers.find(d => d.id === deletingDriver);
+      const driverName = driverToDelete?.name || deletingDriver;
+      
+      // Try to update with isActive field, fallback to hard delete if it fails
+      client.models.Driver.update({
+        id: deletingDriver,
+        isActive: false
+      })
+      .then(() => {
+        setShowDeleteDriverModal(false);
+        setDeletingDriver(null);
+        setNotification(`Driver ${driverName} deleted successfully!`);
+        setTimeout(() => setNotification(null), 3000);
+      })
+      .catch((updateErr) => {
+        console.warn("Soft delete failed, trying hard delete:", updateErr);
+        // Fallback to hard delete for records without isActive field
+        client.models.Driver.delete({ id: deletingDriver })
+        .then(() => {
+          setShowDeleteDriverModal(false);
+          setDeletingDriver(null);
+          setNotification(`Driver ${driverName} deleted successfully!`);
+          setTimeout(() => setNotification(null), 3000);
+        })
+        .catch((deleteErr) => {
+          console.error("Delete failed:", deleteErr);
+          alert("Delete failed: " + deleteErr.message);
+        });
+      });
+    }
+  }
+
   function confirmDelete() {
     if (deletingTodo) {
       const todoToDelete = todos.find(t => t.id === deletingTodo);
       const customId = todoToDelete?.customId || deletingTodo;
       
-      client.models.Todo.delete({ id: deletingTodo })
+      // Try to update with isActive field, fallback to hard delete if it fails
+      client.models.Todo.update({
+        id: deletingTodo,
+        isActive: false
+      })
       .then(() => {
         setShowDeleteModal(false);
         setDeletingTodo(null);
         setNotification(`Ride ${customId} deleted successfully!`);
         setTimeout(() => setNotification(null), 3000);
       })
-      .catch((err) => {
-        console.error("Delete failed:", err);
-        alert("Delete failed: " + err.message);
+      .catch((updateErr) => {
+        console.warn("Soft delete failed, trying hard delete:", updateErr);
+        // Fallback to hard delete for records without isActive field
+        client.models.Todo.delete({ id: deletingTodo })
+        .then(() => {
+          setShowDeleteModal(false);
+          setDeletingTodo(null);
+          setNotification(`Ride ${customId} deleted successfully!`);
+          setTimeout(() => setNotification(null), 3000);
+        })
+        .catch((deleteErr) => {
+          console.error("Delete failed:", deleteErr);
+          alert("Delete failed: " + deleteErr.message);
+        });
       });
     }
   }
@@ -632,7 +738,6 @@ function App() {
             maxLoad: values[4].trim(),
             aadharNumber: values[5].trim(),
             licenseNumber: values[6].trim(),
-            isActive: true,
             partner: user?.signInDetails?.loginId || ""
           });
         }
@@ -875,6 +980,7 @@ function App() {
                   <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle Size</th>
                   <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Max Load</th>
                   <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>License</th>
+                  <th style={{ borderBottom: "2px solid #4a90e2", borderRight: "1px solid #4a90e2", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -895,6 +1001,18 @@ function App() {
                           {showLicense[driver.id] ? "🙈" : "👁️"}
                         </button>
                       </div>
+                    </td>
+                    <td style={{ borderRight: "1px solid #4a90e2", padding: "8px" }}>
+                      <button
+                        onClick={() => editDriver(driver.id)}
+                        title="Edit"
+                        style={{ marginRight: 4, fontSize: "0.9em", padding: "2px 6px" }}
+                      >✏️</button>
+                      <button
+                        onClick={() => deleteDriver(driver.id)}
+                        title="Delete"
+                        style={{ fontSize: "0.9em", padding: "2px 6px" }}
+                      >🗑️</button>
                     </td>
                   </tr>
                 ))}
@@ -1616,6 +1734,69 @@ function App() {
         </div>
       )}
       
+      {/* Delete Driver Confirmation Modal */}
+      {showDeleteDriverModal && deletingDriver && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1001
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setShowDeleteDriverModal(false);
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            textAlign: "center"
+          }}>
+            <h3 style={{ margin: "0 0 15px 0", color: "#dc3545" }}>Delete Driver</h3>
+            {(() => {
+              const driver = drivers.find(d => d.id === deletingDriver);
+              return driver ? (
+                <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#fff3cd", border: "1px solid #ffeaa7", borderRadius: "4px", textAlign: "left" }}>
+                  <div><strong>Name:</strong> {driver.name}</div>
+                  <div><strong>Phone:</strong> {driver.phoneNumber}</div>
+                  <div><strong>Vehicle Number:</strong> {driver.vehicleNumber}</div>
+                  <div><strong>Vehicle Size:</strong> {driver.vehicleSize} Ft</div>
+                  <div><strong>Max Load:</strong> {driver.maxLoad}</div>
+                  <div><strong>License:</strong> {driver.licenseNumber}</div>
+                </div>
+              ) : null;
+            })()}
+            <p style={{ margin: "0 0 20px 0" }}>Are you sure you want to delete this driver?</p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                onClick={() => setShowDeleteDriverModal(false)}
+                style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+              >
+                No
+              </button>
+              <button
+                onClick={confirmDriverDelete}
+                style={{ padding: "8px 16px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px" }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Budget Modal */}
       {showBudgetModal && (
         <div style={{
@@ -1715,6 +1896,121 @@ function App() {
                   style={{ padding: "8px 16px", backgroundColor: "#6f42c1", color: "white", border: "none", borderRadius: "4px" }}
                 >
                   Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Edit Driver Modal */}
+      {showEditDriverModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            maxWidth: "90vw"
+          }}>
+            <h3>Edit Driver</h3>
+            <form onSubmit={handleEditDriverSubmit}>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Name *:</label>
+                <input
+                  type="text"
+                  value={editDriverFormData.name}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, name: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Phone Number *:</label>
+                <input
+                  type="text"
+                  value={editDriverFormData.phoneNumber}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, phoneNumber: e.target.value})}
+                  required
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Vehicle Number:</label>
+                <input
+                  type="text"
+                  value={editDriverFormData.vehicleNumber}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, vehicleNumber: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Vehicle Size (Ft):</label>
+                <input
+                  type="text"
+                  value={editDriverFormData.vehicleSize}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, vehicleSize: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Max Load:</label>
+                <select
+                  value={editDriverFormData.maxLoad}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, maxLoad: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                >
+                  <option value="1 Ton">1 Ton</option>
+                  <option value="5 Ton">5 Ton</option>
+                  <option value="10 Ton">10 Ton</option>
+                  <option value="15 Ton">15 Ton</option>
+                  <option value="20 Ton">20 Ton</option>
+                  <option value="25 Ton">25 Ton</option>
+                  <option value="32 Ton">32 Ton</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label>Aadhar Number:</label>
+                <input
+                  type="text"
+                  value={editDriverFormData.aadharNumber}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, aadharNumber: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label>License Number:</label>
+                <input
+                  type="text"
+                  value={editDriverFormData.licenseNumber}
+                  onChange={(e) => setEditDriverFormData({...editDriverFormData, licenseNumber: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowEditDriverModal(false)}
+                  style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "8px 16px", backgroundColor: "#17a2b8", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  Update
                 </button>
               </div>
             </form>
