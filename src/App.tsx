@@ -620,7 +620,6 @@ function App() {
     reader.onload = (e) => {
       const csv = e.target?.result as string;
       const lines = csv.split('\n');
-      const headers = lines[0].split(',');
       
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',');
