@@ -673,7 +673,7 @@ function App() {
   }
 
   function exportToCSV() {
-    const headers = ['Custom ID', 'Customer Name', 'Expense', 'From', 'To', 'Driver Name', 'Vehicle Number', 'Status', 'Updated At'];
+    const headers = ['Custom ID', 'Customer', 'Expense', 'From', 'To', 'Driver Name', 'Vehicle Number', 'Status', 'Updated At'];
     const csvContent = [
       headers.join(','),
       ...filteredTodos.map(todo => [
@@ -1082,7 +1082,7 @@ function App() {
                 padding: "8px"
               }}>
                 <button onClick={() => handleSort("customerName")} style={{ background: "none", border: "none", cursor: "pointer", color: "#333", fontWeight: "bold" }}>
-                  Customer Name {sortField === "customerName" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Customer {sortField === "customerName" && (sortDirection === "asc" ? "↑" : "↓")}
                 </button>
               </th>
               <th style={{
@@ -1261,7 +1261,7 @@ function App() {
             <h3>Add New Ride</h3>
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: "10px" }}>
-                <label>Customer Name *:</label>
+                <label>Customer *:</label>
                 <input
                   type="text"
                   value={formData.customerName}
@@ -1473,7 +1473,7 @@ function App() {
             
             <form onSubmit={handleEditSubmit}>
               <div style={{ marginBottom: "10px" }}>
-                <label>Customer Name *:</label>
+                <label>Customer *:</label>
                 <input
                   type="text"
                   value={editFormData.customerName}
