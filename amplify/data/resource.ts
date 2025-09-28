@@ -34,7 +34,7 @@ const schema = a.schema({
       maxLoad: a.string(),
       aadharNumber: a.string(),
       licenseNumber: a.string(),
-      isActive: a.boolean(),
+      isActive: a.boolean().default(true),
       partner: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),

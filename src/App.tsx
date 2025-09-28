@@ -114,7 +114,7 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Todo.observeQuery().subscribe({
       next: (data) => {
-        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId && item.isActive !== false);
+        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId && (item.isActive === null || item.isActive === undefined || item.isActive === true));
         setTodos([...userTodos]);
       },
     });
@@ -124,7 +124,7 @@ function App() {
   useEffect(() => {
     const subscription = client.models.Driver.observeQuery().subscribe({
       next: (data) => {
-        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId && item.isActive !== false);
+        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId && (item.isActive === null || item.isActive === undefined || item.isActive === true));
         setDrivers([...userDrivers]);
       },
     });
@@ -471,7 +471,7 @@ function App() {
       client.models.Driver.update({
         id: deletingDriver,
         isActive: false
-      })
+      } as any)
       .then(() => {
         setShowDeleteDriverModal(false);
         setDeletingDriver(null);
@@ -505,7 +505,7 @@ function App() {
       client.models.Todo.update({
         id: deletingTodo,
         isActive: false
-      })
+      } as any)
       .then(() => {
         setShowDeleteModal(false);
         setDeletingTodo(null);
