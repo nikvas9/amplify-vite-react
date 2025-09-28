@@ -100,24 +100,33 @@ function App() {
 
   useEffect(() => {
     const subscription = client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
+      next: (data) => {
+        const userTodos = data.items.filter(item => item.partner === user?.signInDetails?.loginId);
+        setTodos([...userTodos]);
+      },
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const subscription = client.models.Driver.observeQuery().subscribe({
-      next: (data) => setDrivers([...data.items]),
+      next: (data) => {
+        const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId);
+        setDrivers([...userDrivers]);
+      },
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const subscription = client.models.Budget.observeQuery().subscribe({
-      next: (data) => setBudgets([...data.items]),
+      next: (data) => {
+        const userBudgets = data.items.filter(item => item.partner === user?.signInDetails?.loginId);
+        setBudgets([...userBudgets]);
+      },
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (chatMessagesRef.current) {
