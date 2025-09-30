@@ -163,6 +163,8 @@ function App() {
   const [lastBotResponse, setLastBotResponse] = useState<string>("");
   const [lastContext, setLastContext] = useState<{type: string, count: number}>({type: "", count: 0});
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const { user, signOut } = useAuthenticator();
 
   useEffect(() => {
@@ -1095,7 +1097,7 @@ function App() {
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <h1 style={{ margin: 0 }}>
-            {user?.signInDetails?.loginId || 'User'}'s list of rides
+            List of rides
           </h1>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <input
@@ -1147,6 +1149,84 @@ function App() {
               >
                 Vehicles
               </button>
+            </div>
+            {/* Profile Icon */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                👤
+              </button>
+              {showProfileDropdown && (
+                <div style={{
+                  position: "absolute",
+                  top: "45px",
+                  right: "0",
+                  backgroundColor: "white",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  zIndex: 1000,
+                  minWidth: "200px"
+                }}>
+                  <div style={{ padding: "10px", borderBottom: "1px solid #eee" }}>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>{user?.signInDetails?.loginId || 'User'}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowAccountSettings(true);
+                      setShowProfileDropdown(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "none",
+                      backgroundColor: "transparent",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      color: "#000"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    ⚙️ Account Settings
+                  </button>
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setShowProfileDropdown(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "none",
+                      backgroundColor: "transparent",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      color: "#dc3545"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    🚪 Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2959,22 +3039,94 @@ function App() {
         </div>
       )}
       
-      <button 
-        onClick={signOut}
-        style={{
+      {/* Account Settings Modal */}
+      {showAccountSettings && (
+        <div style={{
           position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          padding: "10px 20px",
-          backgroundColor: "#ff4444",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer"
-        }}
-      >
-        Sign out
-      </button>
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "400px",
+            maxWidth: "90vw"
+          }}>
+            <h3 style={{ color: "#333" }}>Account Settings</h3>
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", color: "#333" }}>User Name:</label>
+              <input
+                type="text"
+                value={user?.signInDetails?.loginId || 'User'}
+                readOnly
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#e9ecef",
+                  color: "#495057"
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", color: "#333" }}>Email ID:</label>
+              <input
+                type="email"
+                value={user?.signInDetails?.loginId || ''}
+                readOnly
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#e9ecef",
+                  color: "#495057"
+                }}
+              />
+              <small style={{ color: "#6c757d", fontSize: "12px" }}>Email ID is not editable</small>
+            </div>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
+              <button
+                onClick={() => setShowAccountSettings(false)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#ccc",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer"
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  signOut();
+                  setShowAccountSettings(false);
+                }}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer"
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
