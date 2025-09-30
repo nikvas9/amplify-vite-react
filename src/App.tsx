@@ -42,6 +42,10 @@ function App() {
   const [showViewVehicleModal, setShowViewVehicleModal] = useState(false);
   const [showEnlargedImage, setShowEnlargedImage] = useState(false);
   const [enlargedImageUrl, setEnlargedImageUrl] = useState<string>("");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageGallery, setImageGallery] = useState<Array<{url: string, title: string}>>([]);
+  const [refreshedVehicleImages, setRefreshedVehicleImages] = useState<{[key: string]: string}>({});
+  const [refreshedEditImages, setRefreshedEditImages] = useState<{[key: string]: string}>({});
   const [editingVehicle, setEditingVehicle] = useState<string | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<string | null>(null);
   const [deletingVehicle, setDeletingVehicle] = useState<string | null>(null);
@@ -283,7 +287,7 @@ function App() {
     setShowVehicleModal(true);
   }
 
-  function editVehicle(id: string) {
+  async function editVehicle(id: string) {
     const vehicle = vehicles.find(v => v.id === id);
     if (!vehicle) return;
     
@@ -308,8 +312,157 @@ function App() {
       leftImageUrl: vehicle.leftImageUrl || "",
       rightImageUrl: vehicle.rightImageUrl || ""
     });
+    
+    // Refresh images for edit modal
+    const images: {[key: string]: string} = {};
+    try {
+      if (vehicle.rcImageUrl) {
+        const key = vehicle.rcImageUrl.split('vehicle-documents/')[1]?.split('?')[0];
+        if (key) {
+          const url = await getUrl({ key: `vehicle-documents/${key}` });
+          images.rcImageUrl = url.url.toString();
+        }
+      }
+      if (vehicle.goodsPermitImageUrl) {
+        const key = vehicle.goodsPermitImageUrl.split('vehicle-documents/')[1]?.split('?')[0];
+        if (key) {
+          const url = await getUrl({ key: `vehicle-documents/${key}` });
+          images.goodsPermitImageUrl = url.url.toString();
+        }
+      }
+      if (vehicle.frontImageUrl) {
+        const key = vehicle.frontImageUrl.split('vehicle-documents/')[1]?.split('?')[0];
+        if (key) {
+          const url = await getUrl({ key: `vehicle-documents/${key}` });
+          images.frontImageUrl = url.url.toString();
+        }
+      }
+      if (vehicle.leftImageUrl) {
+        const key = vehicle.leftImageUrl.split('vehicle-documents/')[1]?.split('?')[0];
+        if (key) {
+          const url = await getUrl({ key: `vehicle-documents/${key}` });
+          images.leftImageUrl = url.url.toString();
+        }
+      }
+      if (vehicle.rightImageUrl) {
+        const key = vehicle.rightImageUrl.split('vehicle-documents/')[1]?.split('?')[0];
+        if (key) {
+          const url = await getUrl({ key: `vehicle-documents/${key}` });
+          images.rightImageUrl = url.url.toString();
+        }
+      }
+      if (vehicle.backImageUrl) {
+        const key = vehicle.backImageUrl.split('vehicle-documents/')[1]?.split('?')[0];
+        if (key) {
+          const url = await getUrl({ key: `vehicle-documents/${key}` });
+          images.backImageUrl = url.url.toString();
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing edit images:', error);
+    }
+    setRefreshedEditImages(images);
+    
     setEditingVehicle(id);
     setShowEditVehicleModal(true);
+  }
+
+  async function refreshVehicleImages(vehicle: any) {
+    const images: {[key: string]: string} = {};
+    
+    const extractKeyFromUrl = (url: string) => {
+      try {
+        // Try different URL patterns
+        if (url.includes('vehicle-documents/')) {
+          return url.split('vehicle-documents/')[1]?.split('?')[0];
+        }
+        // If it's just a filename, assume it's in vehicle-documents folder
+        const urlParts = url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        return filename;
+      } catch (e) {
+        console.error('Error extracting key from URL:', url, e);
+        return null;
+      }
+    };
+    
+    try {
+      if (vehicle.rcImageUrl) {
+        const key = extractKeyFromUrl(vehicle.rcImageUrl);
+        if (key) {
+          try {
+            const url = await getUrl({ key: `vehicle-documents/${key}` });
+            images.rcImageUrl = url.url.toString();
+          } catch (e) {
+            console.error('Failed to refresh RC image:', e);
+            images.rcImageUrl = vehicle.rcImageUrl; // Fallback to original
+          }
+        }
+      }
+      if (vehicle.goodsPermitImageUrl) {
+        const key = extractKeyFromUrl(vehicle.goodsPermitImageUrl);
+        if (key) {
+          try {
+            const url = await getUrl({ key: `vehicle-documents/${key}` });
+            images.goodsPermitImageUrl = url.url.toString();
+          } catch (e) {
+            console.error('Failed to refresh Goods Permit image:', e);
+            images.goodsPermitImageUrl = vehicle.goodsPermitImageUrl;
+          }
+        }
+      }
+      if (vehicle.frontImageUrl) {
+        const key = extractKeyFromUrl(vehicle.frontImageUrl);
+        if (key) {
+          try {
+            const url = await getUrl({ key: `vehicle-documents/${key}` });
+            images.frontImageUrl = url.url.toString();
+          } catch (e) {
+            console.error('Failed to refresh Front image:', e);
+            images.frontImageUrl = vehicle.frontImageUrl;
+          }
+        }
+      }
+      if (vehicle.leftImageUrl) {
+        const key = extractKeyFromUrl(vehicle.leftImageUrl);
+        if (key) {
+          try {
+            const url = await getUrl({ key: `vehicle-documents/${key}` });
+            images.leftImageUrl = url.url.toString();
+          } catch (e) {
+            console.error('Failed to refresh Left image:', e);
+            images.leftImageUrl = vehicle.leftImageUrl;
+          }
+        }
+      }
+      if (vehicle.rightImageUrl) {
+        const key = extractKeyFromUrl(vehicle.rightImageUrl);
+        if (key) {
+          try {
+            const url = await getUrl({ key: `vehicle-documents/${key}` });
+            images.rightImageUrl = url.url.toString();
+          } catch (e) {
+            console.error('Failed to refresh Right image:', e);
+            images.rightImageUrl = vehicle.rightImageUrl;
+          }
+        }
+      }
+      if (vehicle.backImageUrl) {
+        const key = extractKeyFromUrl(vehicle.backImageUrl);
+        if (key) {
+          try {
+            const url = await getUrl({ key: `vehicle-documents/${key}` });
+            images.backImageUrl = url.url.toString();
+          } catch (e) {
+            console.error('Failed to refresh Back image:', e);
+            images.backImageUrl = vehicle.backImageUrl;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing images:', error);
+    }
+    setRefreshedVehicleImages(images);
   }
 
   async function uploadImage(file: File, vehicleId: string, documentType: 'rc' | 'goodsPermit' | 'front' | 'back' | 'left' | 'right'): Promise<string> {
@@ -328,6 +481,19 @@ function App() {
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;
+    }
+  }
+
+  async function refreshImageUrl(imageUrl: string): Promise<string> {
+    if (!imageUrl) return "";
+    try {
+      const key = imageUrl.split('/').pop()?.split('?')[0];
+      if (!key) return imageUrl;
+      const url = await getUrl({ key: `vehicle-documents/${key}` });
+      return url.url.toString();
+    } catch (error) {
+      console.error('Error refreshing image URL:', error);
+      return imageUrl;
     }
   }
 
@@ -1184,7 +1350,7 @@ function App() {
                       )}
                     </td>
                     <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>
-                      <button onClick={() => { setViewingVehicle(vehicle.id); setShowViewVehicleModal(true); }} title="View" style={{ marginRight: 4, fontSize: "0.9em", padding: "2px 6px" }}>👁️</button>
+                      <button onClick={() => { setViewingVehicle(vehicle.id); refreshVehicleImages(vehicle); setShowViewVehicleModal(true); }} title="View" style={{ marginRight: 4, fontSize: "1.2em", padding: "4px 8px" }}>👁️</button>
                       <button onClick={() => editVehicle(vehicle.id)} title="Edit" style={{ fontSize: "0.9em", padding: "2px 6px" }}>✏️</button>
                     </td>
                   </tr>
@@ -2668,14 +2834,95 @@ function App() {
                 <div><strong>POC:</strong> {vehicle.poc}</div>
                 <div><strong>Owner:</strong> {vehicle.ownerName}</div>
               </div>
-              {(vehicle.frontImageUrl || vehicle.backImageUrl || vehicle.leftImageUrl || vehicle.rightImageUrl) && (
+              {(refreshedVehicleImages.rcImageUrl || refreshedVehicleImages.goodsPermitImageUrl) && (
+                <div style={{ marginBottom: "15px" }}>
+                  <h4>📄 Documents</h4>
+                  <div style={{ display: "flex", gap: "15px", justifyContent: "center" }}>
+                    {refreshedVehicleImages.rcImageUrl && <div style={{ textAlign: "center" }}><div>🆔 RC</div><img src={refreshedVehicleImages.rcImageUrl} onClick={() => { 
+                      const gallery = [];
+                      if (refreshedVehicleImages.rcImageUrl) gallery.push({url: refreshedVehicleImages.rcImageUrl, title: "🆔 RC"});
+                      if (refreshedVehicleImages.goodsPermitImageUrl) gallery.push({url: refreshedVehicleImages.goodsPermitImageUrl, title: "📋 Goods Permit"});
+                      if (refreshedVehicleImages.frontImageUrl) gallery.push({url: refreshedVehicleImages.frontImageUrl, title: "⬆️ Front"});
+                      if (refreshedVehicleImages.leftImageUrl) gallery.push({url: refreshedVehicleImages.leftImageUrl, title: "⬅️ Left"});
+                      if (refreshedVehicleImages.rightImageUrl) gallery.push({url: refreshedVehicleImages.rightImageUrl, title: "➡️ Right"});
+                      if (refreshedVehicleImages.backImageUrl) gallery.push({url: refreshedVehicleImages.backImageUrl, title: "⬇️ Back"});
+                      setImageGallery(gallery);
+                      setCurrentImageIndex(0);
+                      setEnlargedImageUrl(refreshedVehicleImages.rcImageUrl || "");
+                      setShowEnlargedImage(true);
+                    }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {refreshedVehicleImages.goodsPermitImageUrl && <div style={{ textAlign: "center" }}><div>📋 Goods Permit</div><img src={refreshedVehicleImages.goodsPermitImageUrl} onClick={() => {
+                      const gallery = [];
+                      if (refreshedVehicleImages.rcImageUrl) gallery.push({url: refreshedVehicleImages.rcImageUrl, title: "🆔 RC"});
+                      if (refreshedVehicleImages.goodsPermitImageUrl) gallery.push({url: refreshedVehicleImages.goodsPermitImageUrl, title: "📋 Goods Permit"});
+                      if (refreshedVehicleImages.frontImageUrl) gallery.push({url: refreshedVehicleImages.frontImageUrl, title: "⬆️ Front"});
+                      if (refreshedVehicleImages.leftImageUrl) gallery.push({url: refreshedVehicleImages.leftImageUrl, title: "⬅️ Left"});
+                      if (refreshedVehicleImages.rightImageUrl) gallery.push({url: refreshedVehicleImages.rightImageUrl, title: "➡️ Right"});
+                      if (refreshedVehicleImages.backImageUrl) gallery.push({url: refreshedVehicleImages.backImageUrl, title: "⬇️ Back"});
+                      setImageGallery(gallery);
+                      setCurrentImageIndex(gallery.findIndex(img => img.url === refreshedVehicleImages.goodsPermitImageUrl));
+                      setEnlargedImageUrl(refreshedVehicleImages.goodsPermitImageUrl || "");
+                      setShowEnlargedImage(true);
+                    }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                  </div>
+                </div>
+              )}
+              {(refreshedVehicleImages.frontImageUrl || refreshedVehicleImages.backImageUrl || refreshedVehicleImages.leftImageUrl || refreshedVehicleImages.rightImageUrl) && (
                 <div style={{ marginBottom: "15px" }}>
                   <h4>📷 Vehicle Images</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", maxWidth: "300px", margin: "0 auto" }}>
-                    {vehicle.frontImageUrl && <div style={{ gridColumn: "2", textAlign: "center" }}><div>⬆️ Front</div><img src={vehicle.frontImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.frontImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
-                    {vehicle.leftImageUrl && <div style={{ gridColumn: "1", textAlign: "center" }}><div>⬅️ Left</div><img src={vehicle.leftImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.leftImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
-                    {vehicle.rightImageUrl && <div style={{ gridColumn: "3", textAlign: "center" }}><div>➡️ Right</div><img src={vehicle.rightImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.rightImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
-                    {vehicle.backImageUrl && <div style={{ gridColumn: "2", textAlign: "center" }}><div>⬇️ Back</div><img src={vehicle.backImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.backImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {refreshedVehicleImages.frontImageUrl && <div style={{ gridColumn: "2", textAlign: "center" }}><div>⬆️ Front</div><img src={refreshedVehicleImages.frontImageUrl} onClick={() => {
+                      const gallery = [];
+                      if (refreshedVehicleImages.rcImageUrl) gallery.push({url: refreshedVehicleImages.rcImageUrl, title: "🆔 RC"});
+                      if (refreshedVehicleImages.goodsPermitImageUrl) gallery.push({url: refreshedVehicleImages.goodsPermitImageUrl, title: "📋 Goods Permit"});
+                      if (refreshedVehicleImages.frontImageUrl) gallery.push({url: refreshedVehicleImages.frontImageUrl, title: "⬆️ Front"});
+                      if (refreshedVehicleImages.leftImageUrl) gallery.push({url: refreshedVehicleImages.leftImageUrl, title: "⬅️ Left"});
+                      if (refreshedVehicleImages.rightImageUrl) gallery.push({url: refreshedVehicleImages.rightImageUrl, title: "➡️ Right"});
+                      if (refreshedVehicleImages.backImageUrl) gallery.push({url: refreshedVehicleImages.backImageUrl, title: "⬇️ Back"});
+                      setImageGallery(gallery);
+                      setCurrentImageIndex(gallery.findIndex(img => img.url === refreshedVehicleImages.frontImageUrl));
+                      setEnlargedImageUrl(refreshedVehicleImages.frontImageUrl || "");
+                      setShowEnlargedImage(true);
+                    }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {refreshedVehicleImages.leftImageUrl && <div style={{ gridColumn: "1", textAlign: "center" }}><div>⬅️ Left</div><img src={refreshedVehicleImages.leftImageUrl} onClick={() => {
+                      const gallery = [];
+                      if (refreshedVehicleImages.rcImageUrl) gallery.push({url: refreshedVehicleImages.rcImageUrl, title: "🆔 RC"});
+                      if (refreshedVehicleImages.goodsPermitImageUrl) gallery.push({url: refreshedVehicleImages.goodsPermitImageUrl, title: "📋 Goods Permit"});
+                      if (refreshedVehicleImages.frontImageUrl) gallery.push({url: refreshedVehicleImages.frontImageUrl, title: "⬆️ Front"});
+                      if (refreshedVehicleImages.leftImageUrl) gallery.push({url: refreshedVehicleImages.leftImageUrl, title: "⬅️ Left"});
+                      if (refreshedVehicleImages.rightImageUrl) gallery.push({url: refreshedVehicleImages.rightImageUrl, title: "➡️ Right"});
+                      if (refreshedVehicleImages.backImageUrl) gallery.push({url: refreshedVehicleImages.backImageUrl, title: "⬇️ Back"});
+                      setImageGallery(gallery);
+                      setCurrentImageIndex(gallery.findIndex(img => img.url === refreshedVehicleImages.leftImageUrl));
+                      setEnlargedImageUrl(refreshedVehicleImages.leftImageUrl || "");
+                      setShowEnlargedImage(true);
+                    }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {refreshedVehicleImages.rightImageUrl && <div style={{ gridColumn: "3", textAlign: "center" }}><div>➡️ Right</div><img src={refreshedVehicleImages.rightImageUrl} onClick={() => {
+                      const gallery = [];
+                      if (refreshedVehicleImages.rcImageUrl) gallery.push({url: refreshedVehicleImages.rcImageUrl, title: "🆔 RC"});
+                      if (refreshedVehicleImages.goodsPermitImageUrl) gallery.push({url: refreshedVehicleImages.goodsPermitImageUrl, title: "📋 Goods Permit"});
+                      if (refreshedVehicleImages.frontImageUrl) gallery.push({url: refreshedVehicleImages.frontImageUrl, title: "⬆️ Front"});
+                      if (refreshedVehicleImages.leftImageUrl) gallery.push({url: refreshedVehicleImages.leftImageUrl, title: "⬅️ Left"});
+                      if (refreshedVehicleImages.rightImageUrl) gallery.push({url: refreshedVehicleImages.rightImageUrl, title: "➡️ Right"});
+                      if (refreshedVehicleImages.backImageUrl) gallery.push({url: refreshedVehicleImages.backImageUrl, title: "⬇️ Back"});
+                      setImageGallery(gallery);
+                      setCurrentImageIndex(gallery.findIndex(img => img.url === refreshedVehicleImages.rightImageUrl));
+                      setEnlargedImageUrl(refreshedVehicleImages.rightImageUrl || "");
+                      setShowEnlargedImage(true);
+                    }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {refreshedVehicleImages.backImageUrl && <div style={{ gridColumn: "2", textAlign: "center" }}><div>⬇️ Back</div><img src={refreshedVehicleImages.backImageUrl} onClick={() => {
+                      const gallery = [];
+                      if (refreshedVehicleImages.rcImageUrl) gallery.push({url: refreshedVehicleImages.rcImageUrl, title: "🆔 RC"});
+                      if (refreshedVehicleImages.goodsPermitImageUrl) gallery.push({url: refreshedVehicleImages.goodsPermitImageUrl, title: "📋 Goods Permit"});
+                      if (refreshedVehicleImages.frontImageUrl) gallery.push({url: refreshedVehicleImages.frontImageUrl, title: "⬆️ Front"});
+                      if (refreshedVehicleImages.leftImageUrl) gallery.push({url: refreshedVehicleImages.leftImageUrl, title: "⬅️ Left"});
+                      if (refreshedVehicleImages.rightImageUrl) gallery.push({url: refreshedVehicleImages.rightImageUrl, title: "➡️ Right"});
+                      if (refreshedVehicleImages.backImageUrl) gallery.push({url: refreshedVehicleImages.backImageUrl, title: "⬇️ Back"});
+                      setImageGallery(gallery);
+                      setCurrentImageIndex(gallery.findIndex(img => img.url === refreshedVehicleImages.backImageUrl));
+                      setEnlargedImageUrl(refreshedVehicleImages.backImageUrl || "");
+                      setShowEnlargedImage(true);
+                    }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
                   </div>
                 </div>
               )}
@@ -2749,10 +2996,11 @@ function App() {
                       try {
                         const imageUrl = await uploadImage(file, Date.now().toString(), 'rc');
                         setEditVehicleFormData({...editVehicleFormData, rcImageUrl: imageUrl});
+                        setRefreshedEditImages(prev => ({...prev, rcImageUrl: imageUrl}));
                       } catch (error) { alert("RC image upload failed"); }
                     }
                   }} style={{ width: "100%", padding: "5px", marginTop: "5px", fontSize: "12px" }} />
-                  {editVehicleFormData.rcImageUrl && <img src={editVehicleFormData.rcImageUrl} alt="RC" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />}
+                  {(refreshedEditImages.rcImageUrl || editVehicleFormData.rcImageUrl) && <img src={refreshedEditImages.rcImageUrl || editVehicleFormData.rcImageUrl} alt="RC" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />}
                 </div>
                 <div style={{ marginBottom: "10px" }}>
                   <label>Goods Permit:</label>
@@ -2764,10 +3012,11 @@ function App() {
                       try {
                         const imageUrl = await uploadImage(file, Date.now().toString(), 'goodsPermit');
                         setEditVehicleFormData({...editVehicleFormData, goodsPermitImageUrl: imageUrl});
+                        setRefreshedEditImages(prev => ({...prev, goodsPermitImageUrl: imageUrl}));
                       } catch (error) { alert("Goods Permit image upload failed"); }
                     }
                   }} style={{ width: "100%", padding: "5px", marginTop: "5px", fontSize: "12px" }} />
-                  {editVehicleFormData.goodsPermitImageUrl && <img src={editVehicleFormData.goodsPermitImageUrl} alt="Goods Permit" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />}
+                  {(refreshedEditImages.goodsPermitImageUrl || editVehicleFormData.goodsPermitImageUrl) && <img src={refreshedEditImages.goodsPermitImageUrl || editVehicleFormData.goodsPermitImageUrl} alt="Goods Permit" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />}
                 </div>
                 <div style={{ marginBottom: "10px" }}>
                   <label>POC:</label>
@@ -2796,10 +3045,11 @@ function App() {
                         try {
                           const imageUrl = await uploadImage(file, Date.now().toString(), 'front');
                           setEditVehicleFormData({...editVehicleFormData, frontImageUrl: imageUrl});
+                          setRefreshedEditImages(prev => ({...prev, frontImageUrl: imageUrl}));
                         } catch (error) { alert("Upload failed"); }
                       }
                     }} style={{ fontSize: "10px", width: "80px" }} />
-                    {editVehicleFormData.frontImageUrl && <img src={editVehicleFormData.frontImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                    {(refreshedEditImages.frontImageUrl || editVehicleFormData.frontImageUrl) && <img src={refreshedEditImages.frontImageUrl || editVehicleFormData.frontImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
                   </div>
                   
                   {/* Left */}
@@ -2811,10 +3061,11 @@ function App() {
                         try {
                           const imageUrl = await uploadImage(file, Date.now().toString(), 'left');
                           setEditVehicleFormData({...editVehicleFormData, leftImageUrl: imageUrl});
+                          setRefreshedEditImages(prev => ({...prev, leftImageUrl: imageUrl}));
                         } catch (error) { alert("Upload failed"); }
                       }
                     }} style={{ fontSize: "10px", width: "80px" }} />
-                    {editVehicleFormData.leftImageUrl && <img src={editVehicleFormData.leftImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                    {(refreshedEditImages.leftImageUrl || editVehicleFormData.leftImageUrl) && <img src={refreshedEditImages.leftImageUrl || editVehicleFormData.leftImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
                   </div>
                   
                   {/* Right */}
@@ -2826,10 +3077,11 @@ function App() {
                         try {
                           const imageUrl = await uploadImage(file, Date.now().toString(), 'right');
                           setEditVehicleFormData({...editVehicleFormData, rightImageUrl: imageUrl});
+                          setRefreshedEditImages(prev => ({...prev, rightImageUrl: imageUrl}));
                         } catch (error) { alert("Upload failed"); }
                       }
                     }} style={{ fontSize: "10px", width: "80px" }} />
-                    {editVehicleFormData.rightImageUrl && <img src={editVehicleFormData.rightImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                    {(refreshedEditImages.rightImageUrl || editVehicleFormData.rightImageUrl) && <img src={refreshedEditImages.rightImageUrl || editVehicleFormData.rightImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
                   </div>
                   
                   {/* Back */}
@@ -2841,10 +3093,11 @@ function App() {
                         try {
                           const imageUrl = await uploadImage(file, Date.now().toString(), 'back');
                           setEditVehicleFormData({...editVehicleFormData, backImageUrl: imageUrl});
+                          setRefreshedEditImages(prev => ({...prev, backImageUrl: imageUrl}));
                         } catch (error) { alert("Upload failed"); }
                       }
                     }} style={{ fontSize: "10px", width: "80px" }} />
-                    {editVehicleFormData.backImageUrl && <img src={editVehicleFormData.backImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                    {(refreshedEditImages.backImageUrl || editVehicleFormData.backImageUrl) && <img src={refreshedEditImages.backImageUrl || editVehicleFormData.backImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
                   </div>
                 </div>
               </div>
@@ -2955,7 +3208,27 @@ function App() {
       {/* Enlarged Image Modal */}
       {showEnlargedImage && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1002 }} onClick={() => setShowEnlargedImage(false)}>
-          <img src={enlargedImageUrl} style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain" }} onClick={(e) => e.stopPropagation()} />
+          <div style={{ position: "relative", maxWidth: "90vw", maxHeight: "90vh" }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowEnlargedImage(false)} style={{ position: "absolute", top: "-40px", right: "0", backgroundColor: "rgba(255,255,255,0.8)", border: "none", borderRadius: "50%", width: "30px", height: "30px", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            <div style={{ position: "absolute", top: "-40px", left: "50%", transform: "translateX(-50%)", color: "white", fontSize: "18px", fontWeight: "bold" }}>
+              {imageGallery[currentImageIndex]?.title}
+            </div>
+            <img src={enlargedImageUrl} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+            {imageGallery.length > 1 && (
+              <>
+                <button onClick={() => {
+                  const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : imageGallery.length - 1;
+                  setCurrentImageIndex(newIndex);
+                  setEnlargedImageUrl(imageGallery[newIndex].url);
+                }} style={{ position: "absolute", left: "-50px", top: "50%", transform: "translateY(-50%)", backgroundColor: "rgba(255,255,255,0.8)", border: "none", borderRadius: "50%", width: "40px", height: "40px", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
+                <button onClick={() => {
+                  const newIndex = currentImageIndex < imageGallery.length - 1 ? currentImageIndex + 1 : 0;
+                  setCurrentImageIndex(newIndex);
+                  setEnlargedImageUrl(imageGallery[newIndex].url);
+                }} style={{ position: "absolute", right: "-50px", top: "50%", transform: "translateY(-50%)", backgroundColor: "rgba(255,255,255,0.8)", border: "none", borderRadius: "50%", width: "40px", height: "40px", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
+              </>
+            )}
+          </div>
         </div>
       )}
       
