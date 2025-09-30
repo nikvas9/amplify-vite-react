@@ -39,6 +39,32 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.publicApiKey()]),
   
+  Vehicle: a
+    .model({
+      vehicle: a.string(),
+      model: a.string(),
+      year: a.string(),
+      company: a.string(),
+      mode: a.string(),
+      wheelBase: a.string(),
+      width: a.string(),
+      length: a.string(),
+      rc: a.string(),
+      rcImageUrl: a.string(),
+      goodsPermit: a.string(),
+      goodsPermitImageUrl: a.string(),
+      frontImageUrl: a.string(),
+      backImageUrl: a.string(),
+      leftImageUrl: a.string(),
+      rightImageUrl: a.string(),
+      poc: a.string(),
+      ownerTableKey: a.string(),
+      ownerName: a.string(),
+      isActive: a.boolean().default(true),
+      partner: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+  
   Budget: a
     .model({
       partner: a.string(),

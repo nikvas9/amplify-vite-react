@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import type { Schema } from "../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
+import { uploadData, getUrl } from "aws-amplify/storage";
 
 const client = generateClient<Schema>();
 
@@ -22,17 +23,49 @@ function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [filteredTodos, setFilteredTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [drivers, setDrivers] = useState<Array<Schema["Driver"]["type"]>>([]);
+  const [vehicles, setVehicles] = useState<Array<Schema["Vehicle"]["type"]>>([]);
   const [budgets, setBudgets] = useState<Array<Schema["Budget"]["type"]>>([]);
   const [showDrivers, setShowDrivers] = useState(false);
+  const [showVehicles, setShowVehicles] = useState(false);
   const [filter, setFilter] = useState("");
   const [sortField, setSortField] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [showModal, setShowModal] = useState(false);
   const [showDriverModal, setShowDriverModal] = useState(false);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleteDriverModal, setShowDeleteDriverModal] = useState(false);
+  const [showDeleteVehicleModal, setShowDeleteVehicleModal] = useState(false);
+  const [showEditVehicleModal, setShowEditVehicleModal] = useState(false);
+  const [showViewVehicleModal, setShowViewVehicleModal] = useState(false);
+  const [showEnlargedImage, setShowEnlargedImage] = useState(false);
+  const [enlargedImageUrl, setEnlargedImageUrl] = useState<string>("");
+  const [editingVehicle, setEditingVehicle] = useState<string | null>(null);
+  const [viewingVehicle, setViewingVehicle] = useState<string | null>(null);
+  const [deletingVehicle, setDeletingVehicle] = useState<string | null>(null);
+  const [editVehicleFormData, setEditVehicleFormData] = useState({
+    vehicle: "",
+    model: "",
+    year: "",
+    company: "",
+    mode: "",
+    wheelBase: "",
+    width: "",
+    length: "",
+    rc: "",
+    rcImageUrl: "",
+    goodsPermit: "",
+    goodsPermitImageUrl: "",
+    poc: "",
+    ownerTableKey: "",
+    ownerName: "",
+    frontImageUrl: "",
+    backImageUrl: "",
+    leftImageUrl: "",
+    rightImageUrl: ""
+  });
   const [showLicense, setShowLicense] = useState<{[key: string]: boolean}>({});
   const [deletingTodo, setDeletingTodo] = useState<string | null>(null);
   const [deletingDriver, setDeletingDriver] = useState<string | null>(null);
@@ -94,6 +127,27 @@ function App() {
     aadharNumber: "",
     licenseNumber: ""
   });
+  const [vehicleFormData, setVehicleFormData] = useState({
+    vehicle: "",
+    model: "",
+    year: "",
+    company: "",
+    mode: "",
+    wheelBase: "",
+    width: "",
+    length: "",
+    rc: "",
+    rcImageUrl: "",
+    goodsPermit: "",
+    goodsPermitImageUrl: "",
+    frontImageUrl: "",
+    backImageUrl: "",
+    leftImageUrl: "",
+    rightImageUrl: "",
+    poc: "",
+    ownerTableKey: "",
+    ownerName: ""
+  });
   const [showSummary, setShowSummary] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
@@ -126,6 +180,16 @@ function App() {
       next: (data) => {
         const userDrivers = data.items.filter(item => item.partner === user?.signInDetails?.loginId && ((item as any).isActive !== false));
         setDrivers([...userDrivers]);
+      },
+    });
+    return () => subscription.unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    const subscription = client.models.Vehicle.observeQuery().subscribe({
+      next: (data) => {
+        const userVehicles = data.items.filter(item => item.partner === user?.signInDetails?.loginId && ((item as any).isActive !== false));
+        setVehicles([...userVehicles]);
       },
     });
     return () => subscription.unsubscribe();
@@ -213,6 +277,111 @@ function App() {
 
   function createDriver() {
     setShowDriverModal(true);
+  }
+
+  function createVehicle() {
+    setShowVehicleModal(true);
+  }
+
+  function editVehicle(id: string) {
+    const vehicle = vehicles.find(v => v.id === id);
+    if (!vehicle) return;
+    
+    setEditVehicleFormData({
+      vehicle: vehicle.vehicle || "",
+      model: vehicle.model || "",
+      year: vehicle.year || "",
+      company: vehicle.company || "",
+      mode: vehicle.mode || "",
+      wheelBase: vehicle.wheelBase || "",
+      width: vehicle.width || "",
+      length: vehicle.length || "",
+      rc: vehicle.rc || "",
+      rcImageUrl: vehicle.rcImageUrl || "",
+      goodsPermit: vehicle.goodsPermit || "",
+      goodsPermitImageUrl: vehicle.goodsPermitImageUrl || "",
+      poc: vehicle.poc || "",
+      ownerTableKey: vehicle.ownerTableKey || "",
+      ownerName: vehicle.ownerName || "",
+      frontImageUrl: vehicle.frontImageUrl || "",
+      backImageUrl: vehicle.backImageUrl || "",
+      leftImageUrl: vehicle.leftImageUrl || "",
+      rightImageUrl: vehicle.rightImageUrl || ""
+    });
+    setEditingVehicle(id);
+    setShowEditVehicleModal(true);
+  }
+
+  async function uploadImage(file: File, vehicleId: string, documentType: 'rc' | 'goodsPermit' | 'front' | 'back' | 'left' | 'right'): Promise<string> {
+    try {
+      const key = `vehicle-documents/${vehicleId}/${documentType}-${Date.now()}-${file.name}`;
+      const result = await uploadData({
+        key,
+        data: file,
+        options: {
+          contentType: file.type
+        }
+      }).result;
+      
+      const url = await getUrl({ key: result.key });
+      return url.url.toString();
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  }
+
+  function handleVehicleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    client.models.Vehicle.create({
+      vehicle: vehicleFormData.vehicle,
+      model: vehicleFormData.model,
+      year: vehicleFormData.year,
+      company: vehicleFormData.company,
+      mode: vehicleFormData.mode,
+      wheelBase: vehicleFormData.wheelBase,
+      width: vehicleFormData.width,
+      length: vehicleFormData.length,
+      rc: vehicleFormData.rc,
+      rcImageUrl: vehicleFormData.rcImageUrl,
+      goodsPermit: vehicleFormData.goodsPermit,
+      goodsPermitImageUrl: vehicleFormData.goodsPermitImageUrl,
+      frontImageUrl: vehicleFormData.frontImageUrl,
+      backImageUrl: vehicleFormData.backImageUrl,
+      leftImageUrl: vehicleFormData.leftImageUrl,
+      rightImageUrl: vehicleFormData.rightImageUrl,
+      poc: vehicleFormData.poc,
+      ownerTableKey: vehicleFormData.ownerTableKey,
+      ownerName: vehicleFormData.ownerName,
+      partner: user?.signInDetails?.loginId || ""
+    })
+    .then(() => {
+      setShowVehicleModal(false);
+      setVehicleFormData({
+        vehicle: "",
+        model: "",
+        year: "",
+        company: "",
+        mode: "",
+        wheelBase: "",
+        width: "",
+        length: "",
+        rc: "",
+        rcImageUrl: "",
+        goodsPermit: "",
+        goodsPermitImageUrl: "",
+        frontImageUrl: "",
+        backImageUrl: "",
+        leftImageUrl: "",
+        rightImageUrl: "",
+        poc: "",
+        ownerTableKey: "",
+        ownerName: ""
+      });
+      setNotification("Vehicle added successfully!");
+      setTimeout(() => setNotification(null), 3000);
+    })
+    .catch((err) => alert("Failed to create vehicle: " + err.message));
   }
 
   function handleDriverChange(driverName: string) {
@@ -938,12 +1107,13 @@ function App() {
             />
             <button onClick={createTodo} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Ride</button>
             <button onClick={createDriver} style={{ backgroundColor: "#17a2b8", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Driver</button>
+            <button onClick={createVehicle} style={{ backgroundColor: "#6f42c1", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>+ Add Vehicle</button>
             <div style={{ display: "flex", border: "1px solid #ccc", borderRadius: "4px", overflow: "hidden" }}>
               <button 
-                onClick={() => setShowDrivers(false)} 
+                onClick={() => { setShowDrivers(false); setShowVehicles(false); }} 
                 style={{ 
-                  backgroundColor: !showDrivers ? "#007bff" : "white", 
-                  color: !showDrivers ? "white" : "#007bff", 
+                  backgroundColor: !showDrivers && !showVehicles ? "#007bff" : "white", 
+                  color: !showDrivers && !showVehicles ? "white" : "#007bff", 
                   border: "none", 
                   padding: "8px 12px", 
                   cursor: "pointer",
@@ -953,23 +1123,76 @@ function App() {
                 Rides
               </button>
               <button 
-                onClick={() => setShowDrivers(true)} 
+                onClick={() => { setShowDrivers(true); setShowVehicles(false); }} 
                 style={{ 
-                  backgroundColor: showDrivers ? "#007bff" : "white", 
-                  color: showDrivers ? "white" : "#007bff", 
+                  backgroundColor: showDrivers && !showVehicles ? "#007bff" : "white", 
+                  color: showDrivers && !showVehicles ? "white" : "#007bff", 
+                  border: "none", 
+                  padding: "8px 12px", 
+                  cursor: "pointer",
+                  borderRight: "1px solid #ccc"
+                }}
+              >
+                Drivers
+              </button>
+              <button 
+                onClick={() => { setShowDrivers(false); setShowVehicles(true); }} 
+                style={{ 
+                  backgroundColor: showVehicles ? "#007bff" : "white", 
+                  color: showVehicles ? "white" : "#007bff", 
                   border: "none", 
                   padding: "8px 12px", 
                   cursor: "pointer"
                 }}
               >
-                Drivers
+                Vehicles
               </button>
             </div>
           </div>
         </div>
         {/* --- Table Styling Block: Grey Background & Status Column --- */}
         <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 120px)" }}>
-        {showDrivers ? (
+        {showVehicles ? (
+          <>
+            <table style={{ minWidth: "800px", width: "100%", borderCollapse: "collapse", marginTop: "1em", background: "#f4f4f4", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
+              <thead>
+                <tr>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Vehicle</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Model</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Year</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Company</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Mode</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Owner</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Updated</th>
+                  <th style={{ borderBottom: "2px solid #6f42c1", borderRight: "1px solid #6f42c1", textAlign: "left", padding: "8px", color: "#333", fontWeight: "bold" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vehicles.map((vehicle, idx) => (
+                  <tr key={vehicle.id} style={{ background: idx % 2 === 0 ? "#f4f4f4" : "#e0e0e0", borderBottom: "1px solid #6f42c1" }}>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>{vehicle.vehicle}</td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>{vehicle.model}</td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>{vehicle.year}</td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>{vehicle.company}</td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>{vehicle.mode}</td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>{vehicle.ownerName}</td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>
+                      {vehicle.updatedAt && (
+                        <span title={`Time: ${formatDateCell(vehicle.updatedAt).tooltip}`}>
+                          {formatDateCell(vehicle.updatedAt).display}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>
+                      <button onClick={() => { setViewingVehicle(vehicle.id); setShowViewVehicleModal(true); }} title="View" style={{ marginRight: 4, fontSize: "0.9em", padding: "2px 6px" }}>👁️</button>
+                      <button onClick={() => editVehicle(vehicle.id)} title="Edit" style={{ fontSize: "0.9em", padding: "2px 6px" }}>✏️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : showDrivers ? (
           <>
             <table style={{ minWidth: "600px", width: "100%", borderCollapse: "collapse", marginTop: "1em", background: "#f4f4f4", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
               <thead>
@@ -2132,6 +2355,508 @@ function App() {
           </div>
         </div>
       )}
+      
+      {/* Vehicle Modal */}
+      {showVehicleModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            width: "500px",
+            maxWidth: "90vw",
+            maxHeight: "80vh",
+            overflowY: "auto"
+          }}>
+            <h3>Add New Vehicle</h3>
+            <form onSubmit={handleVehicleSubmit}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Vehicle *:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.vehicle}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, vehicle: e.target.value})}
+                    required
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Model:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.model}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, model: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Year:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.year}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, year: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Company:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.company}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, company: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Mode:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.mode}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, mode: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Wheel Base:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.wheelBase}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, wheelBase: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Width:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.width}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, width: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Length:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.length}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, length: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>RC:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.rc}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, rc: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                  <label style={{ marginTop: "5px", display: "block", fontSize: "12px" }}>RC Image:</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const tempId = Date.now().toString();
+                          const imageUrl = await uploadImage(file, tempId, 'rc');
+                          setVehicleFormData({...vehicleFormData, rcImageUrl: imageUrl});
+                          setNotification("RC image uploaded!");
+                          setTimeout(() => setNotification(null), 2000);
+                        } catch (error) {
+                          console.error('RC upload error:', error);
+                          alert(`Failed to upload RC image: ${error.message || 'Unknown error'}`);
+                        }
+                      }
+                    }}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px", fontSize: "12px" }}
+                  />
+                  {vehicleFormData.rcImageUrl && (
+                    <img src={vehicleFormData.rcImageUrl} alt="RC" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />
+                  )}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Goods Permit:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.goodsPermit}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, goodsPermit: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                  <label style={{ marginTop: "5px", display: "block", fontSize: "12px" }}>Goods Permit Image:</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const tempId = Date.now().toString();
+                          const imageUrl = await uploadImage(file, tempId, 'goodsPermit');
+                          setVehicleFormData({...vehicleFormData, goodsPermitImageUrl: imageUrl});
+                          setNotification("Goods Permit image uploaded!");
+                          setTimeout(() => setNotification(null), 2000);
+                        } catch (error) {
+                          console.error('Goods Permit upload error:', error);
+                          alert(`Failed to upload Goods Permit image: ${error.message || 'Unknown error'}`);
+                        }
+                      }
+                    }}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px", fontSize: "12px" }}
+                  />
+                  {vehicleFormData.goodsPermitImageUrl && (
+                    <img src={vehicleFormData.goodsPermitImageUrl} alt="Goods Permit" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />
+                  )}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>POC:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.poc}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, poc: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Owner Table Key:</label>
+                  <input
+                    type="text"
+                    value={vehicleFormData.ownerTableKey}
+                    onChange={(e) => setVehicleFormData({...vehicleFormData, ownerTableKey: e.target.value})}
+                    style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: "15px", gridColumn: "1 / -1" }}>
+                <label>Owner Name:</label>
+                <input
+                  type="text"
+                  value={vehicleFormData.ownerName}
+                  onChange={(e) => setVehicleFormData({...vehicleFormData, ownerName: e.target.value})}
+                  style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+                />
+              </div>
+              
+              {/* Vehicle Images Section */}
+              <div style={{ marginBottom: "15px", gridColumn: "1 / -1", border: "1px solid #ddd", padding: "15px", borderRadius: "6px" }}>
+                <h4 style={{ margin: "0 0 15px 0", textAlign: "center", color: "#6f42c1" }}>🚛 Vehicle Images</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", maxWidth: "300px", margin: "0 auto" }}>
+                  {/* Front */}
+                  <div style={{ gridColumn: "2", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>⬆️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'front');
+                          setVehicleFormData({...vehicleFormData, frontImageUrl: imageUrl});
+                        } catch (error) { 
+                          console.error('Front image upload error:', error);
+                          alert(`Front image upload failed: ${error.message || 'Unknown error'}`);
+                        }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {vehicleFormData.frontImageUrl && <img src={vehicleFormData.frontImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                  
+                  {/* Left */}
+                  <div style={{ gridColumn: "1", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>⬅️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'left');
+                          setVehicleFormData({...vehicleFormData, leftImageUrl: imageUrl});
+                        } catch (error) { 
+                          console.error('Left image upload error:', error);
+                          alert(`Left image upload failed: ${error.message || 'Unknown error'}`);
+                        }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {vehicleFormData.leftImageUrl && <img src={vehicleFormData.leftImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                  
+                  {/* Right */}
+                  <div style={{ gridColumn: "3", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>➡️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'right');
+                          setVehicleFormData({...vehicleFormData, rightImageUrl: imageUrl});
+                        } catch (error) { 
+                          console.error('Right image upload error:', error);
+                          alert(`Right image upload failed: ${error.message || 'Unknown error'}`);
+                        }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {vehicleFormData.rightImageUrl && <img src={vehicleFormData.rightImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                  
+                  {/* Back */}
+                  <div style={{ gridColumn: "2", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>⬇️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'back');
+                          setVehicleFormData({...vehicleFormData, backImageUrl: imageUrl});
+                        } catch (error) { 
+                          console.error('Back image upload error:', error);
+                          alert(`Back image upload failed: ${error.message || 'Unknown error'}`);
+                        }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {vehicleFormData.backImageUrl && <img src={vehicleFormData.backImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowVehicleModal(false)}
+                  style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "8px 16px", backgroundColor: "#6f42c1", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* View Vehicle Modal */}
+      {showViewVehicleModal && viewingVehicle && (() => {
+        const vehicle = vehicles.find(v => v.id === viewingVehicle);
+        return vehicle ? (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "8px", width: "500px", maxWidth: "90vw", maxHeight: "80vh", overflowY: "auto" }}>
+              <h3>🚛 Vehicle Details</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" }}>
+                <div><strong>Vehicle:</strong> {vehicle.vehicle}</div>
+                <div><strong>Model:</strong> {vehicle.model}</div>
+                <div><strong>Year:</strong> {vehicle.year}</div>
+                <div><strong>Company:</strong> {vehicle.company}</div>
+                <div><strong>Mode:</strong> {vehicle.mode}</div>
+                <div><strong>Wheel Base:</strong> {vehicle.wheelBase}</div>
+                <div><strong>Width:</strong> {vehicle.width}</div>
+                <div><strong>Length:</strong> {vehicle.length}</div>
+                <div><strong>RC:</strong> {vehicle.rc}</div>
+                <div><strong>Goods Permit:</strong> {vehicle.goodsPermit}</div>
+                <div><strong>POC:</strong> {vehicle.poc}</div>
+                <div><strong>Owner:</strong> {vehicle.ownerName}</div>
+              </div>
+              {(vehicle.frontImageUrl || vehicle.backImageUrl || vehicle.leftImageUrl || vehicle.rightImageUrl) && (
+                <div style={{ marginBottom: "15px" }}>
+                  <h4>📷 Vehicle Images</h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", maxWidth: "300px", margin: "0 auto" }}>
+                    {vehicle.frontImageUrl && <div style={{ gridColumn: "2", textAlign: "center" }}><div>⬆️ Front</div><img src={vehicle.frontImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.frontImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {vehicle.leftImageUrl && <div style={{ gridColumn: "1", textAlign: "center" }}><div>⬅️ Left</div><img src={vehicle.leftImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.leftImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {vehicle.rightImageUrl && <div style={{ gridColumn: "3", textAlign: "center" }}><div>➡️ Right</div><img src={vehicle.rightImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.rightImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                    {vehicle.backImageUrl && <div style={{ gridColumn: "2", textAlign: "center" }}><div>⬇️ Back</div><img src={vehicle.backImageUrl} onClick={() => { setEnlargedImageUrl(vehicle.backImageUrl || ""); setShowEnlargedImage(true); }} style={{ width: "80px", height: "60px", objectFit: "cover", border: "1px solid #ccc", cursor: "pointer" }} /></div>}
+                  </div>
+                </div>
+              )}
+              <div style={{ textAlign: "center" }}>
+                <button onClick={() => setShowViewVehicleModal(false)} style={{ padding: "8px 16px", backgroundColor: "#6f42c1", color: "white", border: "none", borderRadius: "4px" }}>Close</button>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
+      
+      {/* Edit Vehicle Modal */}
+      {showEditVehicleModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "8px", width: "500px", maxWidth: "90vw", maxHeight: "80vh", overflowY: "auto" }}>
+            <h3>✏️ Edit Vehicle</h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              client.models.Vehicle.update({
+                id: editingVehicle,
+                ...editVehicleFormData
+              })
+              .then(() => {
+                setShowEditVehicleModal(false);
+                setEditingVehicle(null);
+                setNotification("Vehicle updated successfully!");
+                setTimeout(() => setNotification(null), 3000);
+              })
+              .catch((err) => alert("Update failed: " + err.message));
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Vehicle *:</label>
+                  <input type="text" value={editVehicleFormData.vehicle} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, vehicle: e.target.value})} required style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Model:</label>
+                  <input type="text" value={editVehicleFormData.model} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, model: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Year:</label>
+                  <input type="text" value={editVehicleFormData.year} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, year: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Company:</label>
+                  <input type="text" value={editVehicleFormData.company} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, company: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Mode:</label>
+                  <input type="text" value={editVehicleFormData.mode} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, mode: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Wheel Base:</label>
+                  <input type="text" value={editVehicleFormData.wheelBase} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, wheelBase: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Width:</label>
+                  <input type="text" value={editVehicleFormData.width} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, width: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Length:</label>
+                  <input type="text" value={editVehicleFormData.length} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, length: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>RC:</label>
+                  <input type="text" value={editVehicleFormData.rc} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, rc: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                  <label style={{ marginTop: "5px", display: "block", fontSize: "12px" }}>RC Image:</label>
+                  <input type="file" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      try {
+                        const imageUrl = await uploadImage(file, Date.now().toString(), 'rc');
+                        setEditVehicleFormData({...editVehicleFormData, rcImageUrl: imageUrl});
+                      } catch (error) { alert("RC image upload failed"); }
+                    }
+                  }} style={{ width: "100%", padding: "5px", marginTop: "5px", fontSize: "12px" }} />
+                  {editVehicleFormData.rcImageUrl && <img src={editVehicleFormData.rcImageUrl} alt="RC" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Goods Permit:</label>
+                  <input type="text" value={editVehicleFormData.goodsPermit} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, goodsPermit: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                  <label style={{ marginTop: "5px", display: "block", fontSize: "12px" }}>Goods Permit Image:</label>
+                  <input type="file" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      try {
+                        const imageUrl = await uploadImage(file, Date.now().toString(), 'goodsPermit');
+                        setEditVehicleFormData({...editVehicleFormData, goodsPermitImageUrl: imageUrl});
+                      } catch (error) { alert("Goods Permit image upload failed"); }
+                    }
+                  }} style={{ width: "100%", padding: "5px", marginTop: "5px", fontSize: "12px" }} />
+                  {editVehicleFormData.goodsPermitImageUrl && <img src={editVehicleFormData.goodsPermitImageUrl} alt="Goods Permit" style={{ width: "100px", height: "60px", objectFit: "cover", marginTop: "5px", border: "1px solid #ccc" }} />}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>POC:</label>
+                  <input type="text" value={editVehicleFormData.poc} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, poc: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label>Owner Table Key:</label>
+                  <input type="text" value={editVehicleFormData.ownerTableKey} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, ownerTableKey: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+                </div>
+              </div>
+              <div style={{ marginBottom: "15px", gridColumn: "1 / -1" }}>
+                <label>Owner Name:</label>
+                <input type="text" value={editVehicleFormData.ownerName} onChange={(e) => setEditVehicleFormData({...editVehicleFormData, ownerName: e.target.value})} style={{ width: "100%", padding: "5px", marginTop: "5px" }} />
+              </div>
+              
+              {/* Vehicle Images Section */}
+              <div style={{ marginBottom: "15px", gridColumn: "1 / -1", border: "1px solid #ddd", padding: "15px", borderRadius: "6px" }}>
+                <h4 style={{ margin: "0 0 15px 0", textAlign: "center", color: "#6f42c1" }}>🚛 Vehicle Images</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", maxWidth: "300px", margin: "0 auto" }}>
+                  {/* Front */}
+                  <div style={{ gridColumn: "2", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>⬆️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'front');
+                          setEditVehicleFormData({...editVehicleFormData, frontImageUrl: imageUrl});
+                        } catch (error) { alert("Upload failed"); }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {editVehicleFormData.frontImageUrl && <img src={editVehicleFormData.frontImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                  
+                  {/* Left */}
+                  <div style={{ gridColumn: "1", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>⬅️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'left');
+                          setEditVehicleFormData({...editVehicleFormData, leftImageUrl: imageUrl});
+                        } catch (error) { alert("Upload failed"); }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {editVehicleFormData.leftImageUrl && <img src={editVehicleFormData.leftImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                  
+                  {/* Right */}
+                  <div style={{ gridColumn: "3", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>➡️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'right');
+                          setEditVehicleFormData({...editVehicleFormData, rightImageUrl: imageUrl});
+                        } catch (error) { alert("Upload failed"); }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {editVehicleFormData.rightImageUrl && <img src={editVehicleFormData.rightImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                  
+                  {/* Back */}
+                  <div style={{ gridColumn: "2", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>⬇️</div>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const imageUrl = await uploadImage(file, Date.now().toString(), 'back');
+                          setEditVehicleFormData({...editVehicleFormData, backImageUrl: imageUrl});
+                        } catch (error) { alert("Upload failed"); }
+                      }
+                    }} style={{ fontSize: "10px", width: "80px" }} />
+                    {editVehicleFormData.backImageUrl && <img src={editVehicleFormData.backImageUrl} style={{ width: "60px", height: "40px", objectFit: "cover", marginTop: "3px", border: "1px solid #ccc" }} />}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setShowEditVehicleModal(false)} style={{ padding: "8px 16px", backgroundColor: "#ccc", border: "none", borderRadius: "4px" }}>Cancel</button>
+                <button type="submit" style={{ padding: "8px 16px", backgroundColor: "#6f42c1", color: "white", border: "none", borderRadius: "4px" }}>Update</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
       <div style={{ position: "fixed", bottom: "10px", left: "10px", fontSize: "12px", color: "#6c757d" }}>
         🥳 App successfully hosted..!
       </div>
@@ -2224,6 +2949,13 @@ function App() {
           fontSize: "14px"
         }}>
           ✅ {notification}
+        </div>
+      )}
+      
+      {/* Enlarged Image Modal */}
+      {showEnlargedImage && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1002 }} onClick={() => setShowEnlargedImage(false)}>
+          <img src={enlargedImageUrl} style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain" }} onClick={(e) => e.stopPropagation()} />
         </div>
       )}
       
