@@ -1350,7 +1350,7 @@ function App() {
                       )}
                     </td>
                     <td style={{ borderRight: "1px solid #6f42c1", padding: "8px" }}>
-                      <button onClick={() => { setViewingVehicle(vehicle.id); refreshVehicleImages(vehicle); setShowViewVehicleModal(true); }} title="View" style={{ marginRight: 4, fontSize: "1.2em", padding: "4px 8px" }}>👁️</button>
+                      <button onClick={() => { setViewingVehicle(vehicle.id); setRefreshedVehicleImages({}); refreshVehicleImages(vehicle); setShowViewVehicleModal(true); }} title="View" style={{ marginRight: 4, fontSize: "1.2em", padding: "4px 8px" }}>👁️</button>
                       <button onClick={() => editVehicle(vehicle.id)} title="Edit" style={{ fontSize: "0.9em", padding: "2px 6px" }}>✏️</button>
                     </td>
                   </tr>
